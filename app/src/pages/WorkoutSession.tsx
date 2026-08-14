@@ -1,14 +1,35 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate, useParams } from 'react-router-dom';
-import db from '../db';
+import db, { type SetType } from '../db';
 import { todayStr } from '../lib/date';
+import { useSettings } from '../lib/useSettings';
+import { displayWeight, toKg } from '../lib/units';
+import { estimate1RM } from '../lib/oneRepMax';
 import { Card, PageHeader, Button, Input } from '../components/ui';
+import ExerciseNotes from '../components/ExerciseNotes';
+import ExerciseTools from '../components/ExerciseTools';
+import RestTimer, { type RestTimerHandle } from '../components/RestTimer';
+import Toast, { type ToastHandle } from '../components/Toast';
+
+const SET_TYPE_CYCLE: SetType[] = ['working', 'warmup', 'failure', 'dropset'];
+const SET_TYPE_LABEL: Record<SetType, string> = { working: 'W', warmup: 'Wu', failure: 'F', dropset: 'D' };
+const SET_TYPE_COLOR: Record<SetType, string> = {
+  working: 'bg-white/10 text-slate-300',
+  warmup: 'bg-amber-500/20 text-amber-300',
+  failure: 'bg-red-500/20 text-red-300',
+  dropset: 'bg-purple-500/20 text-purple-300',
+};
+const RPE_OPTIONS = ['', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10'];
 
 export default function WorkoutSession() {
   const { sessionId } = useParams();
   const id = Number(sessionId);
   const navigate = useNavigate();
+  const settings = useSettings();
+  const restTimerRef = useRef<RestTimerHandle | null>(null);
+  const toastRef = useRef<ToastHandle | null>(null);
+  const [notes, setNotes] = useState<string | null>(null);
 
   const session = useLiveQuery(() => db.workoutSessions.get(id), [id]);
   const day = useLiveQuery(() => (session ? db.planDays.get(session.planDayId) : undefined), [session?.planDayId]);
@@ -36,35 +57,105 @@ export default function WorkoutSession() {
     return map;
   }, [allLogsForDay, day, id]);
 
+  const priorBest = useMemo(() => {
+    const map = new Map<number, number>();
+    if (!allLogsForDay) return map;
+    for (const l of allLogsForDay) {
+      if (l.sessionId === id) continue;
+      map.set(l.exerciseId, Math.max(map.get(l.exerciseId) ?? 0, l.weight));
+    }
+    return map;
+  }, [allLogsForDay, id]);
+
   if (!session || !day || !exercises || !currentLogs) return null;
 
   const exById = new Map(exercises.map((e) => [e.id!, e]));
 
-  async function saveSet(exerciseId: number, setNumber: number, weight: number, reps: number) {
+  async function saveSet(exerciseId: number, setNumber: number, weightKg: number, reps: number, setType: SetType, rpe: number | undefined) {
     const existing = currentLogs!.find((l) => l.exerciseId === exerciseId && l.setNumber === setNumber);
     if (existing) {
-      await db.setLogs.update(existing.id!, { weight, reps });
+      await db.setLogs.update(existing.id!, { weight: weightKg, reps, setType, rpe });
     } else {
-      await db.setLogs.add({ sessionId: id, exerciseId, setNumber, weight, reps, date: todayStr() });
+      await db.setLogs.add({ sessionId: id, exerciseId, setNumber, weight: weightKg, reps, date: todayStr(), setType, rpe });
+    }
+
+    if (session!.completed) return;
+
+    if (setType !== 'warmup' && settings.restTimerDefaultSec > 0) {
+      restTimerRef.current?.start(settings.restTimerDefaultSec);
+    }
+
+    const best = priorBest.get(exerciseId) ?? 0;
+    if (weightKg > best && setType !== 'warmup') {
+      const ex = exById.get(exerciseId);
+      toastRef.current?.show(`🎉 New PR on ${ex?.name}: ${displayWeight(weightKg, settings.units)}${settings.units} × ${reps}`);
     }
   }
 
+  async function deleteSet(logId: number) {
+    await db.setLogs.delete(logId);
+  }
+
   async function finishWorkout() {
-    await db.workoutSessions.update(id, { completed: true });
+    await db.workoutSessions.update(id, {
+      completed: true,
+      finishedAt: session!.finishedAt ?? Date.now(),
+      notes: notes ?? session!.notes,
+    });
     navigate('/');
+  }
+
+  async function saveNotesOnly() {
+    await db.workoutSessions.update(id, { notes: notes ?? session!.notes });
+    navigate(-1);
+  }
+
+  async function deleteWorkout() {
+    if (!confirm('Delete this entire workout and all its logged sets? This cannot be undone.')) return;
+    await db.transaction('rw', db.workoutSessions, db.setLogs, async () => {
+      await db.setLogs.where('sessionId').equals(id).delete();
+      await db.workoutSessions.delete(id);
+    });
+    navigate(-1);
   }
 
   const totalSets = day.exercises.reduce((sum, de) => sum + de.sets, 0);
   const loggedSets = currentLogs.length;
+  const durationMin = session.finishedAt ? Math.round((session.finishedAt - session.startedAt) / 60000) : null;
 
   return (
     <div className="pb-4">
-      <PageHeader title={day.name} subtitle={`${loggedSets} / ${totalSets} sets logged`} />
+      <PageHeader
+        title={day.name}
+        subtitle={
+          session.completed
+            ? `${session.date}${durationMin != null ? ` · ${durationMin} min` : ''} · ${loggedSets} sets`
+            : `${loggedSets} / ${totalSets} sets logged`
+        }
+        action={
+          <button onClick={deleteWorkout} className="rounded-lg px-2 py-1.5 text-xs text-red-400/80 underline underline-offset-2">
+            delete
+          </button>
+        }
+      />
+      <Toast onRegister={(h) => (toastRef.current = h)} />
       <div className="flex flex-col gap-3 px-4">
+        <Card>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Session notes</p>
+          <textarea
+            defaultValue={session.notes ?? ''}
+            onBlur={(e) => setNotes(e.target.value)}
+            placeholder="How did this workout feel?"
+            rows={2}
+            className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 outline-none focus:border-emerald-400/60"
+          />
+        </Card>
+
         {day.exercises.map((de) => {
           const ex = exById.get(de.exerciseId);
           if (!ex) return null;
           const last = lastPerformance.get(de.exerciseId);
+          const suggestedTarget = last?.[0]?.weight ?? 0;
           return (
             <Card key={de.exerciseId}>
               <h3 className="font-semibold text-white">{ex.name}</h3>
@@ -72,17 +163,29 @@ export default function WorkoutSession() {
               <p className="mt-0.5 text-xs text-slate-500">Target: {de.sets} × {de.repsLow}-{de.repsHigh} reps</p>
               {last && last.length > 0 && (
                 <p className="mt-1 text-xs text-emerald-400/80">
-                  Last time: {last.map((s) => `${s.weight}kg×${s.reps}`).join(', ')}
+                  Last time: {last.map((s) => `${displayWeight(s.weight, settings.units)}${settings.units}×${s.reps}`).join(', ')}
+                  {' · est. 1RM '}
+                  {displayWeight(Math.max(...last.map((s) => estimate1RM(s.weight, s.reps))), settings.units)}
+                  {settings.units}
                 </p>
               )}
+              <ExerciseNotes exerciseId={ex.id!} notes={ex.notes} />
+              <ExerciseTools
+                defaultWeightKg={suggestedTarget}
+                units={settings.units}
+                barWeightKg={settings.barWeightKg}
+                availablePlatesKg={settings.availablePlatesKg}
+              />
               <div className="mt-3 flex flex-col gap-2">
                 {Array.from({ length: de.sets }, (_, i) => i + 1).map((setNumber) => (
                   <SetRow
                     key={setNumber}
                     setNumber={setNumber}
-                    initial={currentLogs.find((l) => l.exerciseId === de.exerciseId && l.setNumber === setNumber)}
+                    units={settings.units}
+                    existing={currentLogs.find((l) => l.exerciseId === de.exerciseId && l.setNumber === setNumber)}
                     suggestion={last?.[setNumber - 1]}
-                    onSave={(weight, reps) => saveSet(de.exerciseId, setNumber, weight, reps)}
+                    onSave={(weightKg, reps, setType, rpe) => saveSet(de.exerciseId, setNumber, weightKg, reps, setType, rpe)}
+                    onDelete={deleteSet}
                   />
                 ))}
               </div>
@@ -90,45 +193,98 @@ export default function WorkoutSession() {
           );
         })}
 
-        <Button onClick={finishWorkout}>Finish Workout ✓</Button>
+        {session.completed ? (
+          <Button onClick={saveNotesOnly}>Save & Close</Button>
+        ) : (
+          <Button onClick={finishWorkout}>Finish Workout ✓</Button>
+        )}
       </div>
+      <RestTimer onRegister={(h) => (restTimerRef.current = h)} />
     </div>
   );
 }
 
 function SetRow({
   setNumber,
-  initial,
+  units,
+  existing,
   suggestion,
   onSave,
+  onDelete,
 }: {
   setNumber: number;
-  initial?: { weight: number; reps: number };
+  units: 'kg' | 'lb';
+  existing?: { id?: number; weight: number; reps: number; setType?: SetType; rpe?: number };
   suggestion?: { weight: number; reps: number };
-  onSave: (weight: number, reps: number) => void;
+  onSave: (weightKg: number, reps: number, setType: SetType, rpe: number | undefined) => void;
+  onDelete: (logId: number) => void;
 }) {
-  const done = !!initial;
-  const defaultWeight = initial?.weight ?? suggestion?.weight ?? 0;
-  const defaultReps = initial?.reps ?? suggestion?.reps ?? 0;
+  const done = !!existing;
+  const [setType, setSetType] = useState<SetType>(existing?.setType ?? 'working');
+  const defaultWeight = existing?.weight ?? suggestion?.weight ?? 0;
+  const defaultReps = existing?.reps ?? suggestion?.reps ?? 0;
+
+  function cycleSetType() {
+    const idx = SET_TYPE_CYCLE.indexOf(setType);
+    setSetType(SET_TYPE_CYCLE[(idx + 1) % SET_TYPE_CYCLE.length]);
+  }
 
   return (
     <form
-      className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/10 bg-white/5'}`}
+      className={`flex flex-wrap items-center gap-1.5 rounded-xl border px-3 py-2 ${done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/10 bg-white/5'}`}
       onSubmit={(e) => {
         e.preventDefault();
         const form = e.currentTarget;
-        const weight = Number((form.elements.namedItem('weight') as HTMLInputElement).value) || 0;
+        const weightDisplay = Number((form.elements.namedItem('weight') as HTMLInputElement).value) || 0;
         const reps = Number((form.elements.namedItem('reps') as HTMLInputElement).value) || 0;
-        onSave(weight, reps);
+        const rpeStr = (form.elements.namedItem('rpe') as HTMLSelectElement).value;
+        onSave(toKg(weightDisplay, units), reps, setType, rpeStr ? Number(rpeStr) : undefined);
       }}
     >
-      <span className="w-5 text-xs text-slate-500">#{setNumber}</span>
-      <Input name="weight" type="number" inputMode="decimal" step="0.5" defaultValue={defaultWeight || ''} placeholder="kg" className="text-center" />
+      <button
+        type="button"
+        onClick={cycleSetType}
+        className={`w-7 shrink-0 rounded-md py-1.5 text-center text-[10px] font-bold ${SET_TYPE_COLOR[setType]}`}
+        title="Tap to cycle: Working / Warm-up / Failure / Drop set"
+      >
+        {SET_TYPE_LABEL[setType]}
+      </button>
+      <span className="w-4 shrink-0 text-xs text-slate-500">#{setNumber}</span>
+      <Input
+        name="weight"
+        type="number"
+        inputMode="decimal"
+        step="0.5"
+        defaultValue={defaultWeight ? displayWeight(defaultWeight, units) : ''}
+        placeholder={units}
+        className="w-16 text-center"
+      />
       <span className="text-slate-600">×</span>
-      <Input name="reps" type="number" inputMode="numeric" defaultValue={defaultReps || ''} placeholder="reps" className="text-center" />
-      <Button type="submit" variant={done ? 'secondary' : 'primary'} className="!px-3 !py-2">
+      <Input name="reps" type="number" inputMode="numeric" defaultValue={defaultReps || ''} placeholder="reps" className="w-14 text-center" />
+      <select
+        name="rpe"
+        defaultValue={existing?.rpe != null ? String(existing.rpe) : ''}
+        className="w-16 rounded-xl border border-white/10 bg-white/5 px-1.5 py-2.5 text-xs text-white outline-none"
+      >
+        {RPE_OPTIONS.map((r) => (
+          <option key={r} value={r}>
+            {r ? `RPE ${r}` : 'RPE'}
+          </option>
+        ))}
+      </select>
+      <Button type="submit" variant={done ? 'secondary' : 'primary'} className="ml-auto !px-3 !py-2">
         {done ? '✓' : 'Log'}
       </Button>
+      {done && existing?.id != null && (
+        <button
+          type="button"
+          onClick={() => onDelete(existing.id!)}
+          className="rounded-lg px-2 py-2 text-xs text-red-400/70"
+          title="Delete this set"
+        >
+          ✕
+        </button>
+      )}
     </form>
   );
 }

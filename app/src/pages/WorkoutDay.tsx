@@ -12,6 +12,10 @@ export default function WorkoutDay() {
 
   const day = useLiveQuery(() => db.planDays.get(id), [id]);
   const exercises = useLiveQuery(() => db.exercises.toArray(), []);
+  const openSession = useLiveQuery(
+    () => db.workoutSessions.where('date').equals(todayStr()).filter((s) => !s.completed && s.planDayId === id).first(),
+    [id],
+  );
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showNewExercise, setShowNewExercise] = useState(false);
   const [pickId, setPickId] = useState<number | ''>('');
@@ -23,6 +27,10 @@ export default function WorkoutDay() {
   const notInDay = exercises.filter((e) => !day.exercises.some((de) => de.exerciseId === e.id));
 
   async function startWorkout() {
+    if (openSession) {
+      navigate(`/workout/session/${openSession.id}`);
+      return;
+    }
     const sessionId = await db.workoutSessions.add({
       date: todayStr(),
       startedAt: Date.now(),
@@ -94,7 +102,9 @@ export default function WorkoutDay() {
           );
         })}
 
-        <Button onClick={startWorkout} disabled={day.exercises.length === 0}>Start Workout ▸</Button>
+        <Button onClick={startWorkout} disabled={day.exercises.length === 0}>
+          {openSession ? 'Resume Workout ▸' : 'Start Workout ▸'}
+        </Button>
 
         <div className="mt-2 flex flex-col gap-2">
           {showAddExercise ? (
