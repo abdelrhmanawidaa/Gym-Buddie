@@ -4,10 +4,12 @@ A personal, installable web app (PWA) for tracking gym workouts, progress, and n
 
 ## Features
 
-- **Workout plan & exercise guide** — a Push / Pull / Legs split out of the box, each exercise showing which machine/equipment to use and target sets & reps. Fully editable: add/remove days and exercises.
-- **Progress tracking** — log weight × reps per set during a workout, see personal records and charts of max weight / volume over time per exercise.
-- **Calories & protein tracking** — set daily calorie/protein/carb/fat goals, quick-add common foods or log custom ones, see daily progress bars and history by day.
-- **Body stats** — log bodyweight and measurements over time with a trend chart.
+- **Workout plan & exercise guide** — a Push / Pull / Legs split out of the box, each exercise showing which machine/equipment to use and target sets & reps. Fully editable: add/remove days and exercises, on-demand start for any day (not just "next up").
+- **Live logging tools** — rest timer that auto-starts after each set, a warm-up set calculator, a plate calculator (shows exactly which plates to load), RPE per set, and warm-up/working/failure/drop-set tags. Per-exercise notes for form cues or machine settings.
+- **Progress tracking** — personal records, estimated 1RM, max-weight/volume/1RM charts per exercise, a weekly volume-by-muscle-group chart, a training calendar heatmap with a weekly streak counter, and a "new PR!" toast the moment you beat a previous best. Full workout history with the ability to edit or delete any past session or set.
+- **Calories & protein tracking** — daily calorie/protein/carb/fat goals, quick-add common foods or your own saved presets, meal categorization (breakfast/lunch/dinner/snack), a water intake tracker, and day-by-day history.
+- **Body stats** — bodyweight and measurements over time with a trend chart, BMI and Navy-method body fat % (once height/sex are set), and progress photos (front/side/back) stored locally.
+- **Settings** — kg/lb unit toggle, rest timer duration, barbell weight & plate inventory, and a JSON export/import backup since everything lives only in this browser.
 
 ## Running it
 

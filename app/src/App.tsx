@@ -9,6 +9,7 @@ import WorkoutSession from './pages/WorkoutSession';
 import Progress from './pages/Progress';
 import Nutrition from './pages/Nutrition';
 import BodyStats from './pages/BodyStats';
+import Settings from './pages/Settings';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/progress" element={<Progress />} />
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/body" element={<BodyStats />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
         </div>
         <BottomNav />

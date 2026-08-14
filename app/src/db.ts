@@ -29,10 +29,14 @@ export interface WorkoutSession {
   id?: number;
   date: string; // yyyy-mm-dd
   startedAt: number;
+  finishedAt?: number;
   planDayId: number;
   planDayName: string;
   completed: boolean;
+  notes?: string;
 }
+
+export type SetType = 'warmup' | 'working' | 'failure' | 'dropset';
 
 export interface SetLog {
   id?: number;
@@ -42,12 +46,15 @@ export interface SetLog {
   reps: number;
   weight: number;
   date: string;
+  setType?: SetType;
+  rpe?: number;
 }
 
 export interface BodyStat {
   id?: number;
   date: string;
   weight?: number;
+  neck?: number;
   chest?: number;
   waist?: number;
   hips?: number;
@@ -55,6 +62,16 @@ export interface BodyStat {
   thighs?: number;
   notes?: string;
 }
+
+export interface BodyPhoto {
+  id?: number;
+  date: string;
+  angle: 'front' | 'side' | 'back';
+  dataUrl: string;
+  createdAt: number;
+}
+
+export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export interface FoodLog {
   id?: number;
@@ -64,6 +81,7 @@ export interface FoodLog {
   protein: number;
   carbs?: number;
   fat?: number;
+  meal?: Meal;
   createdAt: number;
 }
 
@@ -76,12 +94,30 @@ export interface FoodPreset {
   fat?: number;
 }
 
+export interface WaterLog {
+  id?: number;
+  date: string;
+  ml: number;
+  createdAt: number;
+}
+
 export interface NutritionGoal {
   id?: number;
   calories: number;
   protein: number;
   carbs?: number;
   fat?: number;
+  waterMl?: number;
+}
+
+export interface Settings {
+  id?: number;
+  units: 'kg' | 'lb';
+  restTimerDefaultSec: number;
+  barWeightKg: number;
+  availablePlatesKg: number[];
+  heightCm?: number;
+  sex?: 'male' | 'female';
 }
 
 const db = new Dexie('gym-buddie') as Dexie & {
@@ -90,9 +126,12 @@ const db = new Dexie('gym-buddie') as Dexie & {
   workoutSessions: EntityTable<WorkoutSession, 'id'>;
   setLogs: EntityTable<SetLog, 'id'>;
   bodyStats: EntityTable<BodyStat, 'id'>;
+  bodyPhotos: EntityTable<BodyPhoto, 'id'>;
   foodLogs: EntityTable<FoodLog, 'id'>;
   foodPresets: EntityTable<FoodPreset, 'id'>;
+  waterLogs: EntityTable<WaterLog, 'id'>;
   nutritionGoals: EntityTable<NutritionGoal, 'id'>;
+  settings: EntityTable<Settings, 'id'>;
 };
 
 db.version(1).stores({
@@ -104,6 +143,20 @@ db.version(1).stores({
   foodLogs: '++id, date',
   foodPresets: '++id, name',
   nutritionGoals: '++id',
+});
+
+db.version(2).stores({
+  exercises: '++id, muscleGroup',
+  planDays: '++id, order',
+  workoutSessions: '++id, date, planDayId',
+  setLogs: '++id, sessionId, exerciseId, date',
+  bodyStats: '++id, date',
+  bodyPhotos: '++id, date',
+  foodLogs: '++id, date',
+  foodPresets: '++id, name',
+  waterLogs: '++id, date',
+  nutritionGoals: '++id',
+  settings: '++id',
 });
 
 export default db;
@@ -136,7 +189,7 @@ const DEFAULT_EXERCISES: Exercise[] = [
 ];
 
 export async function seedIfEmpty() {
-  await db.transaction('rw', db.exercises, db.planDays, db.nutritionGoals, async () => {
+  await db.transaction('rw', db.exercises, db.planDays, db.nutritionGoals, db.settings, async () => {
   const exerciseCount = await db.exercises.count();
   if (exerciseCount === 0) {
     const ids = await db.exercises.bulkAdd(DEFAULT_EXERCISES, { allKeys: true });
@@ -185,7 +238,17 @@ export async function seedIfEmpty() {
 
   const goalCount = await db.nutritionGoals.count();
   if (goalCount === 0) {
-    await db.nutritionGoals.add({ calories: 2400, protein: 160, carbs: 250, fat: 70 });
+    await db.nutritionGoals.add({ calories: 2400, protein: 160, carbs: 250, fat: 70, waterMl: 2500 });
+  }
+
+  const settingsCount = await db.settings.count();
+  if (settingsCount === 0) {
+    await db.settings.add({
+      units: 'kg',
+      restTimerDefaultSec: 90,
+      barWeightKg: 20,
+      availablePlatesKg: [25, 20, 15, 10, 5, 2.5, 1.25],
+    });
   }
   });
 }
