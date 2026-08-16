@@ -2,6 +2,8 @@
 
 A personal, installable web app (PWA) for tracking gym workouts, progress, and nutrition. All data is stored locally on your device (IndexedDB) — no account, no server, no syncing.
 
+Available in **English and Arabic** (with full right-to-left layout) — switch language in Settings.
+
 ## Features
 
 - **Workout plan & exercise guide** — a Push / Pull / Legs split out of the box, each exercise showing which machine/equipment to use and target sets & reps. Fully editable: add/remove days and exercises, on-demand start for any day (not just "next up").
@@ -9,7 +11,11 @@ A personal, installable web app (PWA) for tracking gym workouts, progress, and n
 - **Progress tracking** — personal records, estimated 1RM, max-weight/volume/1RM charts per exercise, a weekly volume-by-muscle-group chart, a training calendar heatmap with a weekly streak counter, and a "new PR!" toast the moment you beat a previous best. Full workout history with the ability to edit or delete any past session or set.
 - **Calories & protein tracking** — daily calorie/protein/carb/fat goals, quick-add common foods or your own saved presets, meal categorization (breakfast/lunch/dinner/snack), a water intake tracker, and day-by-day history.
 - **Body stats** — bodyweight and measurements over time with a trend chart, BMI and Navy-method body fat % (once height/sex are set), and progress photos (front/side/back) stored locally.
-- **Settings** — kg/lb unit toggle, rest timer duration, barbell weight & plate inventory, and a JSON export/import backup since everything lives only in this browser.
+- **My Muscles** — every muscle group with its own page: all the exercises and machines that train it, alternatives to pick between (your choice is remembered as your go-to), your current working weight and best set, when you last trained it, and how many sets you've done this week against a target. Start a workout for a single muscle straight from its page.
+- **Train-today recommendation** — suggests which muscles are most rested and most overdue, based on days since last trained and weekly volume, so nothing gets neglected.
+- **Eat-how-much calculator** — works out your calorie, protein, carb, fat, and water targets from your weight, height, age, sex, activity level and goal (cut/maintain/bulk), and applies them as your daily goals in one tap.
+- **AI meal photos** (optional) — photograph a meal and get an estimate of its calories and macros plus a verdict on whether it fits what's left of your day. Needs your own Anthropic API key, added in Settings; everything else in the app works offline without it.
+- **Settings** — English/Arabic toggle, kg/lb units, rest timer duration, barbell weight & plate inventory, body profile, and a JSON export/import backup since everything lives only in this browser.
 
 ## Running it
 

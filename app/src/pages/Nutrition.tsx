@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import db, { type Meal } from '../db';
 import { todayStr, formatDate, addDays } from '../lib/date';
+import { useT } from '../lib/i18n';
 import { Card, PageHeader, Button, Input, Select, ProgressBar, EmptyState } from '../components/ui';
+import FoodPhotoAnalyzer from '../components/FoodPhotoAnalyzer';
+import TdeeCalculator from '../components/TdeeCalculator';
 
 const QUICK_PRESETS = [
   { name: 'Chicken Breast (150g)', calories: 248, protein: 46, carbs: 0, fat: 5 },
@@ -16,7 +19,12 @@ const QUICK_PRESETS = [
 const WATER_QUICK_ADD = [250, 500, 750];
 
 const MEAL_ORDER: Meal[] = ['breakfast', 'lunch', 'dinner', 'snack'];
-const MEAL_LABEL: Record<Meal, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snack: 'Snack' };
+const MEAL_KEY: Record<Meal, 'nutrition.breakfast' | 'nutrition.lunch' | 'nutrition.dinner' | 'nutrition.snack'> = {
+  breakfast: 'nutrition.breakfast',
+  lunch: 'nutrition.lunch',
+  dinner: 'nutrition.dinner',
+  snack: 'nutrition.snack',
+};
 
 function defaultMeal(): Meal {
   const h = new Date().getHours();
@@ -27,6 +35,7 @@ function defaultMeal(): Meal {
 }
 
 export default function Nutrition() {
+  const { t } = useT();
   const [date, setDate] = useState(todayStr());
   const [showAdd, setShowAdd] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
@@ -103,28 +112,28 @@ export default function Nutrition() {
 
   return (
     <div className="pb-4">
-      <PageHeader title="Nutrition" subtitle="Calories, protein & water" />
+      <PageHeader title={t('nutrition.title')} subtitle={t('nutrition.subtitle')} />
 
       <div className="flex flex-col gap-3 px-4">
         <div className="flex items-center justify-between">
           <button className="rounded-lg bg-white/5 px-3 py-1.5 text-sm text-slate-300" onClick={() => setDate(addDays(date, -1))}>
-            ‹ Prev
+            {t('common.prev')}
           </button>
-          <span className="text-sm font-medium text-white">{date === todayStr() ? 'Today' : formatDate(date)}</span>
+          <span className="text-sm font-medium text-white">{date === todayStr() ? t('common.today') : formatDate(date)}</span>
           <button
             className="rounded-lg bg-white/5 px-3 py-1.5 text-sm text-slate-300 disabled:opacity-30"
             disabled={date === todayStr()}
             onClick={() => setDate(addDays(date, 1))}
           >
-            Next ›
+            {t('common.next')}
           </button>
         </div>
 
         <Card>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-sky-400">Daily totals</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-sky-400">{t('nutrition.dailyTotals')}</p>
             <button onClick={() => setShowGoal((s) => !s)} className="text-xs text-slate-400 underline underline-offset-2">
-              edit goals
+              {t('nutrition.editGoals')}
             </button>
           </div>
 
@@ -132,18 +141,18 @@ export default function Nutrition() {
             <GoalForm goal={{ ...goal, waterMl: waterGoal }} onSave={saveGoal} onCancel={() => setShowGoal(false)} />
           ) : (
             <div className="mt-3 flex flex-col gap-3">
-              <Metric label="Calories" value={totals.calories} max={goal.calories} unit="kcal" color="#38bdf8" />
-              <Metric label="Protein" value={totals.protein} max={goal.protein} unit="g" color="#34d399" />
-              {goal.carbs != null && <Metric label="Carbs" value={totals.carbs} max={goal.carbs} unit="g" color="#fbbf24" />}
-              {goal.fat != null && <Metric label="Fat" value={totals.fat} max={goal.fat} unit="g" color="#f472b6" />}
+              <Metric label={t('nutrition.calories')} value={totals.calories} max={goal.calories} unit="kcal" color="#38bdf8" />
+              <Metric label={t('nutrition.protein')} value={totals.protein} max={goal.protein} unit="g" color="#34d399" />
+              {goal.carbs != null && <Metric label={t('nutrition.carbs')} value={totals.carbs} max={goal.carbs} unit="g" color="#fbbf24" />}
+              {goal.fat != null && <Metric label={t('nutrition.fat')} value={totals.fat} max={goal.fat} unit="g" color="#f472b6" />}
             </div>
           )}
         </Card>
 
         <Card>
-          <p className="text-xs font-medium uppercase tracking-wide text-cyan-400">💧 Water</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-cyan-400">{t('nutrition.water')}</p>
           <div className="mt-2">
-            <Metric label="Intake" value={waterTotal} max={waterGoal} unit="ml" color="#22d3ee" />
+            <Metric label={t('nutrition.intake')} value={waterTotal} max={waterGoal} unit="ml" color="#22d3ee" />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {WATER_QUICK_ADD.map((ml) => (
@@ -157,18 +166,29 @@ export default function Nutrition() {
             ))}
             {(waterLogs?.length ?? 0) > 0 && (
               <button onClick={removeLastWater} className="text-xs text-red-400/80 underline underline-offset-2">
-                undo last
+                {t('nutrition.undoLast')}
               </button>
             )}
           </div>
         </Card>
 
+        <TdeeCalculator />
+
+        <FoodPhotoAnalyzer
+          date={date}
+          meal={defaultMeal()}
+          remainingCalories={Math.max(0, goal.calories - totals.calories)}
+          remainingProtein={Math.max(0, goal.protein - totals.protein)}
+          goalCalories={goal.calories}
+          goalProtein={goal.protein}
+        />
+
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-300">Quick add</p>
+            <p className="text-sm font-medium text-slate-300">{t('nutrition.quickAdd')}</p>
             {(presets?.length ?? 0) > 0 && (
               <button onClick={() => setManagePresets((m) => !m)} className="text-xs text-slate-400 underline underline-offset-2">
-                {managePresets ? 'done' : 'manage'}
+                {managePresets ? t('common.done') : t('common.manage')}
               </button>
             )}
           </div>
@@ -206,38 +226,38 @@ export default function Nutrition() {
 
         {showAdd ? (
           <Card className="flex flex-col gap-2">
-            <Input placeholder="Food name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input placeholder={t('nutrition.foodName')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <Select value={form.meal} onChange={(e) => setForm({ ...form, meal: e.target.value as Meal })}>
               {MEAL_ORDER.map((m) => (
-                <option key={m} value={m}>{MEAL_LABEL[m]}</option>
+                <option key={m} value={m}>{t(MEAL_KEY[m])}</option>
               ))}
             </Select>
             <div className="grid grid-cols-2 gap-2">
-              <Input type="number" inputMode="decimal" placeholder="Calories" value={form.calories} onChange={(e) => setForm({ ...form, calories: e.target.value })} />
-              <Input type="number" inputMode="decimal" placeholder="Protein (g)" value={form.protein} onChange={(e) => setForm({ ...form, protein: e.target.value })} />
-              <Input type="number" inputMode="decimal" placeholder="Carbs (g)" value={form.carbs} onChange={(e) => setForm({ ...form, carbs: e.target.value })} />
-              <Input type="number" inputMode="decimal" placeholder="Fat (g)" value={form.fat} onChange={(e) => setForm({ ...form, fat: e.target.value })} />
+              <Input type="number" inputMode="decimal" placeholder={t('nutrition.calories')} value={form.calories} onChange={(e) => setForm({ ...form, calories: e.target.value })} />
+              <Input type="number" inputMode="decimal" placeholder={t('nutrition.protein')} value={form.protein} onChange={(e) => setForm({ ...form, protein: e.target.value })} />
+              <Input type="number" inputMode="decimal" placeholder={t('nutrition.carbs')} value={form.carbs} onChange={(e) => setForm({ ...form, carbs: e.target.value })} />
+              <Input type="number" inputMode="decimal" placeholder={t('nutrition.fat')} value={form.fat} onChange={(e) => setForm({ ...form, fat: e.target.value })} />
             </div>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input type="checkbox" checked={form.saveAsPreset} onChange={(e) => setForm({ ...form, saveAsPreset: e.target.checked })} />
-              Save as a reusable quick-add preset
+              {t('nutrition.saveAsPreset')}
             </label>
             <div className="flex gap-2">
-              <Button className="flex-1" onClick={addCustom}>Add</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={addCustom}>{t('common.add')}</Button>
+              <Button variant="secondary" className="flex-1" onClick={() => setShowAdd(false)}>{t('common.cancel')}</Button>
             </div>
           </Card>
         ) : (
-          <Button variant="secondary" onClick={() => setShowAdd(true)}>+ Add Custom Food</Button>
+          <Button variant="secondary" onClick={() => setShowAdd(true)}>{t('nutrition.addCustom')}</Button>
         )}
 
         <div>
-          <p className="mb-2 text-sm font-medium text-slate-300">Log</p>
-          {groupedLogs.length === 0 && <EmptyState text="Nothing logged for this day yet." />}
+          <p className="mb-2 text-sm font-medium text-slate-300">{t('nutrition.log')}</p>
+          {groupedLogs.length === 0 && <EmptyState text={t('nutrition.nothingLogged')} />}
           <div className="flex flex-col gap-3">
             {groupedLogs.map((g) => (
               <div key={g.meal}>
-                <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{MEAL_LABEL[g.meal]}</p>
+                <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{t(MEAL_KEY[g.meal])}</p>
                 <div className="flex flex-col gap-2">
                   {g.items.map((f) => (
                     <Card key={f.id} className="flex items-center justify-between !py-2.5">
@@ -248,7 +268,7 @@ export default function Nutrition() {
                         </p>
                       </div>
                       <button onClick={() => removeLog(f.id!)} className="text-xs text-red-400/80 underline underline-offset-2">
-                        remove
+                        {t('common.remove')}
                       </button>
                     </Card>
                   ))}

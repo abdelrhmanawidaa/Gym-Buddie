@@ -1,4 +1,5 @@
 import { calculatePlates } from '../lib/plates';
+import { useT } from '../lib/i18n';
 import { displayWeight, type Unit } from '../lib/units';
 
 export default function PlateCalc({
@@ -12,16 +13,16 @@ export default function PlateCalc({
   availablePlatesKg: number[];
   units: Unit;
 }) {
+  const { t } = useT();
   const result = calculatePlates(targetWeightKg, barWeightKg, availablePlatesKg);
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
       <p className="text-xs text-slate-400">
-        Bar {displayWeight(barWeightKg, units)}
-        {units} + plates per side:
+        {t('session.barPlates', { bar: displayWeight(barWeightKg, units), unit: units })}
       </p>
       {result.perSide.length === 0 ? (
-        <p className="mt-1 text-slate-500">Just the bar.</p>
+        <p className="mt-1 text-slate-500">{t('session.justBar')}</p>
       ) : (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {result.perSide.map((p, i) => (
@@ -33,8 +34,7 @@ export default function PlateCalc({
       )}
       {result.remainder > 0.05 && (
         <p className="mt-1.5 text-xs text-amber-400">
-          Can't hit target exactly with these plates — closest is {displayWeight(result.achievedWeight, units)}
-          {units}.
+          {t('session.cantHit', { weight: displayWeight(result.achievedWeight, units), unit: units })}
         </p>
       )}
     </div>

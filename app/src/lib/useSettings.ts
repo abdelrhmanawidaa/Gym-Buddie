@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import db, { type Settings } from '../db';
 
 const FALLBACK: Settings = {
+  lang: 'en',
   units: 'kg',
   restTimerDefaultSec: 90,
   barWeightKg: 20,

@@ -3,40 +3,33 @@ import { useNavigate } from 'react-router-dom';
 import db from '../db';
 import { todayStr } from '../lib/date';
 import { Card, PageHeader, ProgressBar, Button, EmptyState } from '../components/ui';
+import { useT } from '../lib/i18n';
 import { useSettings } from '../lib/useSettings';
 import { displayWeight } from '../lib/units';
 import { computeWeeklyStreak } from '../lib/streak';
+import { useMuscleStats } from '../lib/useMuscleStats';
+import { recommendToday } from '../lib/muscleStats';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const today = todayStr();
+  const { t, lang } = useT();
   const settings = useSettings();
+  const { stats } = useMuscleStats();
 
   const planDays = useLiveQuery(() => db.planDays.orderBy('order').toArray(), []);
   const sessions = useLiveQuery(() => db.workoutSessions.orderBy('id').reverse().toArray(), []);
   const goal = useLiveQuery(() => db.nutritionGoals.toCollection().first(), []);
   const todayFood = useLiveQuery(() => db.foodLogs.where('date').equals(today).toArray(), [today]);
   const lastBodyStat = useLiveQuery(() => db.bodyStats.orderBy('date').reverse().first(), []);
-  const exercises = useLiveQuery(() => db.exercises.toArray(), []);
-  const allSetLogs = useLiveQuery(() => db.setLogs.toArray(), []);
 
-  if (!planDays || !sessions || !exercises || !allSetLogs) return null;
+  if (!planDays || !sessions || !stats) return null;
 
   const streak = computeWeeklyStreak(sessions.filter((s) => s.completed).map((s) => s.date));
-
-  const exById = new Map(exercises.map((e) => [e.id!, e]));
-  const muscleGroups = [...new Set(exercises.map((e) => e.muscleGroup))];
-  const daysSinceByMuscle = muscleGroups
-    .map((mg) => {
-      const lastDate = allSetLogs
-        .filter((l) => exById.get(l.exerciseId)?.muscleGroup === mg)
-        .reduce<string | null>((max, l) => (!max || l.date > max ? l.date : max), null);
-      if (!lastDate) return null;
-      const days = Math.round((new Date(today + 'T00:00:00').getTime() - new Date(lastDate + 'T00:00:00').getTime()) / 86400000);
-      return { muscleGroup: mg, days };
-    })
-    .filter((x): x is { muscleGroup: string; days: number } => x !== null)
-    .sort((a, b) => a.days - b.days);
+  const recommended = recommendToday(stats, 3);
+  const recovery = stats
+    .filter((s) => s.daysSince !== null)
+    .sort((a, b) => (a.daysSince ?? 0) - (b.daysSince ?? 0));
 
   const lastCompleted = sessions.find((s) => s.completed);
   let nextIndex = 0;
@@ -45,12 +38,10 @@ export default function Dashboard() {
     nextIndex = idx >= 0 ? (idx + 1) % planDays.length : 0;
   }
   const nextDay = planDays[nextIndex];
+  const nextDayName = nextDay ? ((lang === 'ar' && nextDay.nameAr) || nextDay.name) : '';
 
   const todayTotals = (todayFood ?? []).reduce(
-    (acc, f) => ({
-      calories: acc.calories + f.calories,
-      protein: acc.protein + f.protein,
-    }),
+    (acc, f) => ({ calories: acc.calories + f.calories, protein: acc.protein + f.protein }),
     { calories: 0, protein: 0 },
   );
 
@@ -59,12 +50,16 @@ export default function Dashboard() {
   return (
     <div className="pb-4">
       <PageHeader
-        title="Today"
-        subtitle={new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        title={t('dashboard.title')}
+        subtitle={new Date().toLocaleDateString(lang === 'ar' ? 'ar-EG' : undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        })}
         action={
           <button
             onClick={() => navigate('/settings')}
-            aria-label="Settings"
+            aria-label={t('dashboard.settings')}
             className="rounded-lg p-2 text-slate-400 hover:bg-white/5 hover:text-white"
           >
             <GearIcon className="h-5 w-5" />
@@ -74,18 +69,21 @@ export default function Dashboard() {
 
       <div className="flex flex-col gap-3 px-4">
         {streak > 0 && (
-          <button onClick={() => navigate('/progress')} className="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2 text-left">
-            <span className="text-sm text-slate-300">🔥 {streak}-week streak</span>
-            <span className="text-xs text-slate-500">view progress ›</span>
+          <button
+            onClick={() => navigate('/progress')}
+            className="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2 text-start"
+          >
+            <span className="text-sm text-slate-300">{t('dashboard.streak', { n: streak })}</span>
+            <span className="text-xs text-slate-500">{t('dashboard.viewProgress')}</span>
           </button>
         )}
 
         <Card>
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Up next</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('dashboard.upNext')}</p>
           {nextDay ? (
             <>
-              <h2 className="mt-1 text-lg font-semibold text-white">{nextDay.name}</h2>
-              <p className="mt-0.5 text-sm text-slate-400">{nextDay.exercises.length} exercises</p>
+              <h2 className="mt-1 text-lg font-semibold text-white">{nextDayName}</h2>
+              <p className="mt-0.5 text-sm text-slate-400">{t('dashboard.exercises', { n: nextDay.exercises.length })}</p>
               <Button
                 className="mt-3 w-full"
                 onClick={() =>
@@ -94,26 +92,44 @@ export default function Dashboard() {
                     : navigate(`/workout/day/${nextDay.id}`)
                 }
               >
-                {todaysSession ? 'Resume Workout' : 'View & Start Workout'}
+                {todaysSession ? t('dashboard.resume') : t('dashboard.viewStart')}
               </Button>
             </>
           ) : (
-            <EmptyState text="No workout plan yet. Add one in the Workout tab." />
+            <EmptyState text={t('dashboard.noPlan')} />
           )}
         </Card>
 
+        {recommended.length > 0 && (
+          <Card>
+            <p className="text-xs font-medium uppercase tracking-wide text-purple-400">{t('dashboard.trainToday')}</p>
+            <p className="mt-0.5 text-xs text-slate-500">{t('dashboard.trainTodayHint')}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {recommended.map((s) => (
+                <button
+                  key={s.def.key}
+                  onClick={() => navigate(`/muscles/${s.def.key}`)}
+                  className="rounded-full bg-purple-500/15 px-3 py-1.5 text-sm font-medium text-purple-200"
+                >
+                  {lang === 'ar' ? s.def.ar : s.def.en}
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
         <Card>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-sky-400">Nutrition today</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-sky-400">{t('dashboard.nutritionToday')}</p>
             <button onClick={() => navigate('/nutrition')} className="text-xs text-slate-400 underline underline-offset-2">
-              details
+              {t('common.details')}
             </button>
           </div>
           {goal ? (
             <div className="mt-3 flex flex-col gap-3">
               <div>
                 <div className="mb-1 flex justify-between text-sm">
-                  <span className="text-slate-300">Calories</span>
+                  <span className="text-slate-300">{t('nutrition.calories')}</span>
                   <span className="text-slate-400">
                     {Math.round(todayTotals.calories)} / {goal.calories} kcal
                   </span>
@@ -122,7 +138,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="mb-1 flex justify-between text-sm">
-                  <span className="text-slate-300">Protein</span>
+                  <span className="text-slate-300">{t('nutrition.protein')}</span>
                   <span className="text-slate-400">
                     {Math.round(todayTotals.protein)} / {goal.protein} g
                   </span>
@@ -131,40 +147,50 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <EmptyState text="Set your calorie & protein goals in the Food tab." />
+            <EmptyState text={t('dashboard.setGoals')} />
           )}
         </Card>
 
         <Card>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-amber-400">Body weight</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-amber-400">{t('dashboard.bodyWeight')}</p>
             <button onClick={() => navigate('/body')} className="text-xs text-slate-400 underline underline-offset-2">
-              log
+              {t('common.log')}
             </button>
           </div>
           {lastBodyStat?.weight != null ? (
             <p className="mt-1 text-lg font-semibold text-white">
               {displayWeight(lastBodyStat.weight, settings.units)} {settings.units}{' '}
-              <span className="text-sm font-normal text-slate-400">on {lastBodyStat.date}</span>
+              <span className="text-sm font-normal text-slate-400">{lastBodyStat.date}</span>
             </p>
           ) : (
-            <p className="mt-1 text-sm text-slate-500">No entries yet.</p>
+            <p className="mt-1 text-sm text-slate-500">{t('dashboard.noEntries')}</p>
           )}
         </Card>
 
-        {daysSinceByMuscle.length > 0 && (
+        {recovery.length > 0 && (
           <Card>
-            <p className="text-xs font-medium uppercase tracking-wide text-purple-400">Muscle recovery</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-purple-400">{t('dashboard.muscleRecovery')}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {daysSinceByMuscle.map(({ muscleGroup, days }) => (
-                <span
-                  key={muscleGroup}
+              {recovery.map((s) => (
+                <button
+                  key={s.def.key}
+                  onClick={() => navigate(`/muscles/${s.def.key}`)}
                   className={`rounded-full px-2.5 py-1 text-xs ${
-                    days === 0 ? 'bg-red-500/15 text-red-300' : days === 1 ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'
+                    s.daysSince === 0
+                      ? 'bg-red-500/15 text-red-300'
+                      : (s.daysSince ?? 0) < s.def.recoveryDays
+                        ? 'bg-amber-500/15 text-amber-300'
+                        : 'bg-emerald-500/15 text-emerald-300'
                   }`}
                 >
-                  {muscleGroup} · {days === 0 ? 'today' : days === 1 ? '1 day' : `${days} days`}
-                </span>
+                  {lang === 'ar' ? s.def.ar : s.def.en} ·{' '}
+                  {s.daysSince === 0
+                    ? t('common.today')
+                    : s.daysSince === 1
+                      ? t('common.day')
+                      : t('common.days', { n: s.daysSince ?? 0 })}
+                </button>
               ))}
             </div>
           </Card>

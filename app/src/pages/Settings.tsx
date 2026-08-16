@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import db from '../db';
+import { useT, type Lang } from '../lib/i18n';
 import { useSettings } from '../lib/useSettings';
 import { displayWeight, toKg } from '../lib/units';
 import { Card, PageHeader, Button, Input, Select } from '../components/ui';
@@ -17,10 +18,12 @@ const TABLES = [
   'waterLogs',
   'nutritionGoals',
   'settings',
+  'musclePrefs',
 ] as const;
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { t, lang, setLang } = useT();
   const settings = useSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importMsg, setImportMsg] = useState('');
@@ -59,7 +62,7 @@ export default function SettingsPage() {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const data = parsed.data ?? parsed;
-      if (!confirm('This will replace ALL current data with the backup file. Continue?')) return;
+      if (!confirm(t('settings.importConfirm'))) return;
 
       await db.transaction('rw', TABLES.map((t) => (db as any).table(t)), async () => {
         for (const t of TABLES) {
@@ -69,10 +72,10 @@ export default function SettingsPage() {
           }
         }
       });
-      setImportMsg('Import successful. Reloading…');
+      setImportMsg(t('settings.importOk'));
       setTimeout(() => window.location.reload(), 800);
     } catch {
-      setImportMsg('Import failed: file is not a valid backup.');
+      setImportMsg(t('settings.importFail'));
     }
   }
 
@@ -92,25 +95,33 @@ export default function SettingsPage() {
   return (
     <div className="pb-4">
       <PageHeader
-        title="Settings"
+        title={t('settings.title')}
         action={
           <button onClick={() => navigate(-1)} className="rounded-lg bg-white/5 px-3 py-1.5 text-sm text-slate-300">
-            Close
+            {t('common.close')}
           </button>
         }
       />
       <div className="flex flex-col gap-3 px-4">
         <Card className="flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Units</p>
-          <Select value={settings.units} onChange={(e) => update({ units: e.target.value as 'kg' | 'lb' })}>
-            <option value="kg">Kilograms (kg)</option>
-            <option value="lb">Pounds (lb)</option>
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('settings.language')}</p>
+          <Select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
           </Select>
         </Card>
 
         <Card className="flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Rest timer</p>
-          <label className="text-sm text-slate-300">Default rest between sets (seconds)</label>
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('settings.units')}</p>
+          <Select value={settings.units} onChange={(e) => update({ units: e.target.value as 'kg' | 'lb' })}>
+            <option value="kg">{t('settings.kg')}</option>
+            <option value="lb">{t('settings.lb')}</option>
+          </Select>
+        </Card>
+
+        <Card className="flex flex-col gap-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('settings.restTimer')}</p>
+          <label className="text-sm text-slate-300">{t('settings.restDefault')}</label>
           <Input
             type="number"
             value={settings.restTimerDefaultSec}
@@ -119,14 +130,14 @@ export default function SettingsPage() {
         </Card>
 
         <Card className="flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Plate calculator</p>
-          <label className="text-sm text-slate-300">Barbell weight ({settings.units})</label>
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('settings.plateCalc')}</p>
+          <label className="text-sm text-slate-300">{t('settings.barWeight', { unit: settings.units })}</label>
           <Input
             type="number"
             value={displayWeight(settings.barWeightKg, settings.units)}
             onChange={(e) => update({ barWeightKg: toKg(Number(e.target.value) || 0, settings.units) })}
           />
-          <label className="text-sm text-slate-300">Available plates per side ({settings.units})</label>
+          <label className="text-sm text-slate-300">{t('settings.availablePlates', { unit: settings.units })}</label>
           <div className="flex flex-wrap gap-2">
             {settings.availablePlatesKg.map((p) => (
               <button
@@ -139,35 +150,62 @@ export default function SettingsPage() {
             ))}
           </div>
           <div className="flex gap-2">
-            <Input type="number" placeholder="Add plate weight" value={plateInput} onChange={(e) => setPlateInput(e.target.value)} />
-            <Button variant="secondary" onClick={addPlate}>Add</Button>
+            <Input type="number" placeholder={t('settings.addPlate')} value={plateInput} onChange={(e) => setPlateInput(e.target.value)} />
+            <Button variant="secondary" onClick={addPlate}>{t('common.add')}</Button>
           </div>
         </Card>
 
         <Card className="flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Body composition</p>
-          <p className="text-xs text-slate-500">Used to calculate BMI and body fat % on the Body tab.</p>
-          <label className="text-sm text-slate-300">Height (cm)</label>
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('settings.bodyComp')}</p>
+          <p className="text-xs text-slate-500">{t('settings.bodyCompHint')}</p>
+          <label className="text-sm text-slate-300">{t('settings.height')}</label>
           <Input
             type="number"
             value={settings.heightCm ?? ''}
             onChange={(e) => update({ heightCm: e.target.value ? Number(e.target.value) : undefined })}
           />
-          <label className="text-sm text-slate-300">Sex (for body fat % formula)</label>
+          <label className="text-sm text-slate-300">{t('settings.age')}</label>
+          <Input
+            type="number"
+            value={settings.age ?? ''}
+            onChange={(e) => update({ age: e.target.value ? Number(e.target.value) : undefined })}
+          />
+          <label className="text-sm text-slate-300">{t('settings.sex')}</label>
           <Select value={settings.sex ?? ''} onChange={(e) => update({ sex: (e.target.value || undefined) as 'male' | 'female' | undefined })}>
-            <option value="">Not set</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+            <option value="">{t('settings.notSet')}</option>
+            <option value="male">{t('settings.male')}</option>
+            <option value="female">{t('settings.female')}</option>
           </Select>
         </Card>
 
         <Card className="flex flex-col gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Backup & restore</p>
-          <p className="text-xs text-slate-500">
-            All your data lives only in this browser. Export a backup regularly, especially before clearing browser data or switching devices.
-          </p>
-          <Button onClick={exportData}>Export backup (JSON)</Button>
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>Import backup</Button>
+          <p className="text-xs font-medium uppercase tracking-wide text-fuchsia-400">{t('settings.ai')}</p>
+          <p className="text-xs text-slate-500">{t('settings.aiHint')}</p>
+          <Input
+            type="password"
+            autoComplete="off"
+            placeholder={t('settings.apiKey')}
+            value={settings.aiApiKey ?? ''}
+            onChange={(e) => update({ aiApiKey: e.target.value.trim() || undefined })}
+          />
+          {settings.aiApiKey?.trim() && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-emerald-400">{t('settings.aiEnabled')}</span>
+              <button
+                onClick={() => update({ aiApiKey: undefined })}
+                className="text-xs text-red-400/80 underline underline-offset-2"
+              >
+                {t('settings.clearKey')}
+              </button>
+            </div>
+          )}
+        </Card>
+
+        <Card className="flex flex-col gap-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('settings.backup')}</p>
+          <p className="text-xs text-slate-500">{t('settings.backupHint')}</p>
+          <Button onClick={exportData}>{t('settings.export')}</Button>
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>{t('settings.import')}</Button>
           <input
             ref={fileInputRef}
             type="file"

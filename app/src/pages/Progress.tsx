@@ -3,10 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import db from '../db';
+import { useT, localized } from '../lib/i18n';
 import { useSettings } from '../lib/useSettings';
 import { displayWeight } from '../lib/units';
 import { estimate1RM } from '../lib/oneRepMax';
 import { computeWeeklyStreak } from '../lib/streak';
+import { muscleName } from '../lib/muscles';
 import { daysAgo } from '../lib/date';
 import { Card, PageHeader, Select, EmptyState } from '../components/ui';
 import Heatmap from '../components/Heatmap';
@@ -15,6 +17,7 @@ const CHART_TOOLTIP_STYLE = { background: '#151b23', border: '1px solid #ffffff2
 
 export default function Progress() {
   const navigate = useNavigate();
+  const { t, lang } = useT();
   const settings = useSettings();
   const exercises = useLiveQuery(
     () => db.exercises.toArray().then((list) => list.sort((a, b) => a.name.localeCompare(b.name))),
@@ -73,12 +76,16 @@ export default function Progress() {
       if (l.date < since) continue;
       const ex = exById.get(l.exerciseId);
       if (!ex) continue;
-      totals.set(ex.muscleGroup, (totals.get(ex.muscleGroup) ?? 0) + l.weight * l.reps);
+      const key = ex.muscle ?? ex.muscleGroup;
+      totals.set(key, (totals.get(key) ?? 0) + l.weight * l.reps);
     }
     return [...totals.entries()]
-      .map(([muscleGroup, volume]) => ({ muscleGroup, volume: Math.round(displayWeight(volume, settings.units)) }))
+      .map(([key, volume]) => ({
+        muscleGroup: muscleName(key, lang),
+        volume: Math.round(displayWeight(volume, settings.units)),
+      }))
       .sort((a, b) => b.volume - a.volume);
-  }, [allSetLogs, exercises, settings.units]);
+  }, [allSetLogs, exercises, settings.units, lang]);
 
   const sessionStats = useMemo(() => {
     const bySession = new Map<number, { volume: number; sets: number }>();
@@ -95,13 +102,13 @@ export default function Progress() {
 
   return (
     <div className="pb-4">
-      <PageHeader title="Progress" subtitle="Track strength gains over time" />
+      <PageHeader title={t('progress.title')} subtitle={t('progress.subtitle')} />
       <div className="flex flex-col gap-3 px-4">
         <Card>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">Consistency</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('progress.consistency')}</p>
             <p className="text-sm font-semibold text-white">
-              🔥 {streak} week{streak === 1 ? '' : 's'}
+              {streak === 1 ? t('progress.week', { n: streak }) : t('progress.weeks', { n: streak })}
             </p>
           </div>
           <div className="mt-3">
@@ -111,7 +118,7 @@ export default function Progress() {
 
         {muscleVolume.length > 0 && (
           <Card>
-            <p className="mb-2 text-sm font-medium text-slate-300">Volume by muscle group (last 7 days)</p>
+            <p className="mb-2 text-sm font-medium text-slate-300">{t('progress.volumeByMuscle')}</p>
             <div className="h-52 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={muscleVolume} layout="vertical" margin={{ top: 5, right: 16, left: 8, bottom: 0 }}>
@@ -127,32 +134,31 @@ export default function Progress() {
         )}
 
         <Select value={exerciseId} onChange={(e) => setExerciseId(e.target.value ? Number(e.target.value) : '')}>
-          <option value="">Choose an exercise…</option>
+          <option value="">{t('progress.chooseExercise')}</option>
           {exercises.map((e) => (
-            <option key={e.id} value={e.id}>{e.name}</option>
+            <option key={e.id} value={e.id}>{localized(e, 'name', lang)}</option>
           ))}
         </Select>
 
-        {exerciseId && (!logs || logs.length === 0) && <EmptyState text="No logged sets yet for this exercise." />}
+        {exerciseId && (!logs || logs.length === 0) && <EmptyState text={t('progress.noSets')} />}
 
         {exerciseId && logs && logs.length > 0 && (
           <>
             {pr && (
               <Card>
-                <p className="text-xs font-medium uppercase tracking-wide text-amber-400">Personal Record</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-amber-400">{t('progress.pr')}</p>
                 <p className="mt-1 text-2xl font-bold text-white">
                   {displayWeight(pr.weight, settings.units)}
                   {settings.units} × {pr.reps}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Estimated 1RM: {displayWeight(pr.oneRM, settings.units)}
-                  {settings.units}
+                  {t('progress.estimated1RM', { value: displayWeight(pr.oneRM, settings.units), unit: settings.units })}
                 </p>
               </Card>
             )}
 
             <Card>
-              <p className="mb-2 text-sm font-medium text-slate-300">Max weight per session ({settings.units})</p>
+              <p className="mb-2 text-sm font-medium text-slate-300">{t('progress.maxWeight', { unit: settings.units })}</p>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -167,7 +173,7 @@ export default function Progress() {
             </Card>
 
             <Card>
-              <p className="mb-2 text-sm font-medium text-slate-300">Estimated 1RM per session ({settings.units})</p>
+              <p className="mb-2 text-sm font-medium text-slate-300">{t('progress.oneRMChart', { unit: settings.units })}</p>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -182,7 +188,7 @@ export default function Progress() {
             </Card>
 
             <Card>
-              <p className="mb-2 text-sm font-medium text-slate-300">Total volume per session ({settings.units})</p>
+              <p className="mb-2 text-sm font-medium text-slate-300">{t('progress.totalVolume', { unit: settings.units })}</p>
               <div className="h-52 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
@@ -199,8 +205,8 @@ export default function Progress() {
         )}
 
         <div>
-          <p className="mb-2 text-sm font-medium text-slate-300">Workout history</p>
-          {sessions.length === 0 && <EmptyState text="No workouts logged yet." />}
+          <p className="mb-2 text-sm font-medium text-slate-300">{t('progress.history')}</p>
+          {sessions.length === 0 && <EmptyState text={t('progress.noWorkouts')} />}
           <div className="flex flex-col gap-2">
             {sessions.map((s) => {
               const stats = sessionStats.get(s.id!);
@@ -210,12 +216,15 @@ export default function Progress() {
                   <div className="flex items-center justify-between" onClick={() => navigate(`/workout/session/${s.id}`)}>
                     <div>
                       <p className="text-sm font-medium text-white">
-                        {s.planDayName} {!s.completed && <span className="text-amber-400">(in progress)</span>}
+                        {(lang === 'ar' && s.planDayNameAr) || s.planDayName}{' '}
+                        {!s.completed && <span className="text-amber-400">{t('progress.inProgress')}</span>}
                       </p>
                       <p className="text-xs text-slate-400">
                         {s.date}
-                        {durationMin != null ? ` · ${durationMin} min` : ''}
-                        {stats ? ` · ${stats.sets} sets · ${Math.round(displayWeight(stats.volume, settings.units))}${settings.units} volume` : ''}
+                        {durationMin != null ? ` · ${t('session.minutes', { n: durationMin })}` : ''}
+                        {stats
+                          ? ` · ${stats.sets} ${t('common.sets')} · ${t('progress.volumeSuffix', { value: Math.round(displayWeight(stats.volume, settings.units)), unit: settings.units })}`
+                          : ''}
                       </p>
                     </div>
                     <span className="text-slate-500">›</span>
