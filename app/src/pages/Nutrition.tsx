@@ -8,12 +8,12 @@ import FoodPhotoAnalyzer from '../components/FoodPhotoAnalyzer';
 import TdeeCalculator from '../components/TdeeCalculator';
 
 const QUICK_PRESETS = [
-  { name: 'Chicken Breast (150g)', calories: 248, protein: 46, carbs: 0, fat: 5 },
-  { name: 'Whey Protein Scoop', calories: 120, protein: 24, carbs: 3, fat: 1 },
-  { name: 'Rice (1 cup cooked)', calories: 205, protein: 4, carbs: 45, fat: 0.5 },
-  { name: '3 Whole Eggs', calories: 234, protein: 19, carbs: 1, fat: 16 },
-  { name: 'Greek Yogurt (200g)', calories: 146, protein: 20, carbs: 8, fat: 4 },
-  { name: 'Banana', calories: 105, protein: 1, carbs: 27, fat: 0.4 },
+  { name: 'Chicken Breast (150g)', nameAr: 'صدر فرخة (150 جرام)', calories: 248, protein: 46, carbs: 0, fat: 5 },
+  { name: 'Whey Protein Scoop', nameAr: 'سكوب واي بروتين', calories: 120, protein: 24, carbs: 3, fat: 1 },
+  { name: 'Rice (1 cup cooked)', nameAr: 'رز (كوب مسلوق)', calories: 205, protein: 4, carbs: 45, fat: 0.5 },
+  { name: '3 Whole Eggs', nameAr: '3 بيضات كاملة', calories: 234, protein: 19, carbs: 1, fat: 16 },
+  { name: 'Greek Yogurt (200g)', nameAr: 'زبادي يوناني (200 جرام)', calories: 146, protein: 20, carbs: 8, fat: 4 },
+  { name: 'Banana', nameAr: 'موزة', calories: 105, protein: 1, carbs: 27, fat: 0.4 },
 ];
 
 const WATER_QUICK_ADD = [250, 500, 750];
@@ -35,7 +35,7 @@ function defaultMeal(): Meal {
 }
 
 export default function Nutrition() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const [date, setDate] = useState(todayStr());
   const [showAdd, setShowAdd] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
@@ -62,8 +62,9 @@ export default function Nutrition() {
   const waterTotal = (waterLogs ?? []).reduce((sum, w) => sum + w.ml, 0);
   const waterGoal = goal.waterMl ?? 2500;
 
-  async function addPreset(p: { name: string; calories: number; protein: number; carbs?: number; fat?: number }) {
-    await db.foodLogs.add({ date, name: p.name, calories: p.calories, protein: p.protein, carbs: p.carbs, fat: p.fat, meal: defaultMeal(), createdAt: Date.now() });
+  async function addPreset(p: { name: string; nameAr?: string; calories: number; protein: number; carbs?: number; fat?: number }) {
+    const name = lang === 'ar' && p.nameAr ? p.nameAr : p.name;
+    await db.foodLogs.add({ date, name, calories: p.calories, protein: p.protein, carbs: p.carbs, fat: p.fat, meal: defaultMeal(), createdAt: Date.now() });
   }
 
   async function deletePreset(id: number) {
@@ -199,7 +200,7 @@ export default function Nutrition() {
                 onClick={() => addPreset(p)}
                 className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 active:bg-white/10"
               >
-                + {p.name}
+                + {lang === 'ar' ? p.nameAr : p.name}
               </button>
             ))}
             {(presets ?? []).map((p) =>
@@ -305,6 +306,7 @@ function GoalForm({
   onSave: (v: { calories: number; protein: number; carbs: number; fat: number; waterMl: number }) => void;
   onCancel: () => void;
 }) {
+  const { t } = useT();
   const [calories, setCalories] = useState(String(goal.calories));
   const [protein, setProtein] = useState(String(goal.protein));
   const [carbs, setCarbs] = useState(String(goal.carbs ?? ''));
@@ -314,13 +316,13 @@ function GoalForm({
   return (
     <div className="mt-3 flex flex-col gap-2">
       <div className="grid grid-cols-2 gap-2">
-        <Input type="number" placeholder="Calories" value={calories} onChange={(e) => setCalories(e.target.value)} />
-        <Input type="number" placeholder="Protein (g)" value={protein} onChange={(e) => setProtein(e.target.value)} />
-        <Input type="number" placeholder="Carbs (g)" value={carbs} onChange={(e) => setCarbs(e.target.value)} />
-        <Input type="number" placeholder="Fat (g)" value={fat} onChange={(e) => setFat(e.target.value)} />
+        <Input type="number" placeholder={t('nutrition.calories')} value={calories} onChange={(e) => setCalories(e.target.value)} />
+        <Input type="number" placeholder={t('nutrition.protein')} value={protein} onChange={(e) => setProtein(e.target.value)} />
+        <Input type="number" placeholder={t('nutrition.carbs')} value={carbs} onChange={(e) => setCarbs(e.target.value)} />
+        <Input type="number" placeholder={t('nutrition.fat')} value={fat} onChange={(e) => setFat(e.target.value)} />
       </div>
-      <label className="text-sm text-slate-300">Water goal (ml)</label>
-      <Input type="number" placeholder="Water (ml)" value={waterMl} onChange={(e) => setWaterMl(e.target.value)} />
+      <label className="text-sm text-slate-300">{t('nutrition.waterGoal')}</label>
+      <Input type="number" placeholder={t('nutrition.waterGoal')} value={waterMl} onChange={(e) => setWaterMl(e.target.value)} />
       <div className="flex gap-2">
         <Button
           className="flex-1"
@@ -334,9 +336,9 @@ function GoalForm({
             })
           }
         >
-          Save
+          {t('common.save')}
         </Button>
-        <Button variant="secondary" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>{t('common.cancel')}</Button>
       </div>
     </div>
   );

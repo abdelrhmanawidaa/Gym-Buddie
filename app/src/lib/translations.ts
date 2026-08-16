@@ -1,4 +1,10 @@
 export const en = {
+  // Error boundary
+  'error.title': 'Something went wrong',
+  'error.subtitle': "This screen hit a snag. Your data is safe — it's all stored on this device.",
+  'error.reload': 'Reload app',
+  'error.goHome': 'Go to Today',
+
   // Navigation
   'nav.today': 'Today',
   'nav.workout': 'Workout',
@@ -336,6 +342,12 @@ export const en = {
 };
 
 export const ar: typeof en = {
+  // Error boundary
+  'error.title': 'حصلت مشكلة',
+  'error.subtitle': 'الشاشة دي واجهت عطل. بياناتك في أمان — كلها متخزنة على الجهاز ده.',
+  'error.reload': 'أعد تحميل التطبيق',
+  'error.goHome': 'روح لصفحة اليوم',
+
   // Navigation
   'nav.today': 'اليوم',
   'nav.workout': 'التمرين',
