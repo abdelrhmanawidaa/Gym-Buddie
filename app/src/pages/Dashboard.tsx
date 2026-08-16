@@ -47,6 +47,23 @@ export default function Dashboard() {
 
   const todaysSession = sessions.find((s) => s.date === today && !s.completed);
 
+  async function startNextDay() {
+    if (todaysSession) {
+      navigate(`/workout/session/${todaysSession.id}`);
+      return;
+    }
+    if (!nextDay) return;
+    const sessionId = await db.workoutSessions.add({
+      date: today,
+      startedAt: Date.now(),
+      planDayId: nextDay.id!,
+      planDayName: nextDay.name,
+      planDayNameAr: nextDay.nameAr,
+      completed: false,
+    });
+    navigate(`/workout/session/${sessionId}`);
+  }
+
   return (
     <div className="pb-4">
       <PageHeader
@@ -82,16 +99,17 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('dashboard.upNext')}</p>
           {nextDay ? (
             <>
-              <h2 className="mt-1 text-lg font-semibold text-white">{nextDayName}</h2>
+              <div className="mt-1 flex items-start justify-between gap-2">
+                <h2 className="text-lg font-semibold text-white">{nextDayName}</h2>
+                <button
+                  onClick={() => navigate(`/workout/day/${nextDay.id}`)}
+                  className="shrink-0 pt-1 text-xs text-slate-500 underline underline-offset-2"
+                >
+                  {t('common.edit')}
+                </button>
+              </div>
               <p className="mt-0.5 text-sm text-slate-400">{t('dashboard.exercises', { n: nextDay.exercises.length })}</p>
-              <Button
-                className="mt-3 w-full"
-                onClick={() =>
-                  todaysSession
-                    ? navigate(`/workout/session/${todaysSession.id}`)
-                    : navigate(`/workout/day/${nextDay.id}`)
-                }
-              >
+              <Button className="mt-3 w-full" onClick={startNextDay} disabled={nextDay.exercises.length === 0}>
                 {todaysSession ? t('dashboard.resume') : t('dashboard.viewStart')}
               </Button>
             </>

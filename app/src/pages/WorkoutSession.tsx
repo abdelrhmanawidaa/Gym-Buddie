@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate, useParams } from 'react-router-dom';
 import db, { AD_HOC_PLAN_DAY, type PlanDayExercise, type SetType } from '../db';
@@ -7,7 +7,7 @@ import { useT, localized } from '../lib/i18n';
 import { useSettings } from '../lib/useSettings';
 import { displayWeight, toKg } from '../lib/units';
 import { estimate1RM } from '../lib/oneRepMax';
-import { Card, PageHeader, Button, Input } from '../components/ui';
+import { Card, PageHeader, Button } from '../components/ui';
 import ExerciseNotes from '../components/ExerciseNotes';
 import ExerciseTools from '../components/ExerciseTools';
 import RestTimer, { type RestTimerHandle } from '../components/RestTimer';
@@ -237,6 +237,54 @@ export default function WorkoutSession() {
   );
 }
 
+/** Round to 2dp and strip float noise (e.g. 62.500000000000007). */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function Stepper({
+  value,
+  onChange,
+  step,
+  suffix,
+  min = 0,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  step: number;
+  suffix: string;
+  min?: number;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
+      <button
+        type="button"
+        onClick={() => onChange(round2(Math.max(min, value - step)))}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-slate-300 transition-colors active:bg-white/10"
+      >
+        −
+      </button>
+      <div className="flex min-w-0 flex-1 flex-col items-center">
+        <input
+          type="number"
+          inputMode="decimal"
+          value={value || ''}
+          onChange={(e) => onChange(Number(e.target.value) || 0)}
+          className="w-full min-w-0 bg-transparent text-center text-lg font-bold text-white outline-none [appearance:textfield]"
+        />
+        <span className="text-[10px] uppercase tracking-wide text-slate-500">{suffix}</span>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(round2(value + step))}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg font-bold text-slate-300 transition-colors active:bg-white/10"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 function SetRow({
   setNumber,
   units,
@@ -254,71 +302,122 @@ function SetRow({
 }) {
   const { t } = useT();
   const done = !!existing;
+  const isRepeat = !done && !!suggestion;
+
   const [setType, setSetType] = useState<SetType>(existing?.setType ?? 'working');
-  const defaultWeight = existing?.weight ?? suggestion?.weight ?? 0;
-  const defaultReps = existing?.reps ?? suggestion?.reps ?? 0;
+  const [rpe, setRpe] = useState(existing?.rpe != null ? String(existing.rpe) : '');
+  const [expanded, setExpanded] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [weight, setWeight] = useState(() => {
+    const kg = existing?.weight ?? suggestion?.weight ?? 0;
+    return kg ? displayWeight(kg, units) : 0;
+  });
+  const [reps, setReps] = useState(existing?.reps ?? suggestion?.reps ?? 0);
+
+  // `suggestion` loads asynchronously (it comes from a live query one level
+  // up), so it's often still undefined on first render. Sync it in once it
+  // arrives, but only if the row is untouched and not already logged —
+  // otherwise this would clobber an in-progress edit.
+  useEffect(() => {
+    if (touched || done || !suggestion) return;
+    setWeight(suggestion.weight ? displayWeight(suggestion.weight, units) : 0);
+    setReps(suggestion.reps ?? 0);
+  }, [suggestion, done, touched, units]);
+
+  function updateWeight(next: number) {
+    setTouched(true);
+    setWeight(next);
+  }
+
+  function updateReps(next: number) {
+    setTouched(true);
+    setReps(next);
+  }
+
+  const weightStep = units === 'kg' ? 2.5 : 5;
 
   function cycleSetType() {
     const idx = SET_TYPE_CYCLE.indexOf(setType);
     setSetType(SET_TYPE_CYCLE[(idx + 1) % SET_TYPE_CYCLE.length]);
   }
 
+  function handleLog() {
+    onSave(toKg(weight, units), reps, setType, rpe ? Number(rpe) : undefined);
+  }
+
+  const hasValues = weight > 0 || reps > 0;
+  const logLabel = done
+    ? hasValues
+      ? `✓ ${t('session.loggedValues', { weight, unit: units, reps })}`
+      : '✓'
+    : hasValues
+      ? t('session.logValues', { weight, unit: units, reps })
+      : t('session.logBtn');
+
   return (
-    <form
-      className={`flex flex-wrap items-center gap-1.5 rounded-xl border px-3 py-2 ${done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/10 bg-white/5'}`}
-      onSubmit={(e) => {
-        e.preventDefault();
-        const form = e.currentTarget;
-        const weightDisplay = Number((form.elements.namedItem('weight') as HTMLInputElement).value) || 0;
-        const reps = Number((form.elements.namedItem('reps') as HTMLInputElement).value) || 0;
-        const rpeStr = (form.elements.namedItem('rpe') as HTMLSelectElement).value;
-        onSave(toKg(weightDisplay, units), reps, setType, rpeStr ? Number(rpeStr) : undefined);
-      }}
-    >
-      <button
-        type="button"
-        onClick={cycleSetType}
-        className={`w-7 shrink-0 rounded-md py-1.5 text-center text-[10px] font-bold ${SET_TYPE_COLOR[setType]}`}
-        title={t('session.setTypeHint')}
-      >
-        {SET_TYPE_LABEL[setType]}
-      </button>
-      <span className="w-4 shrink-0 text-xs text-slate-500">#{setNumber}</span>
-      <Input
-        name="weight"
-        type="number"
-        inputMode="decimal"
-        step="0.5"
-        defaultValue={defaultWeight ? displayWeight(defaultWeight, units) : ''}
-        placeholder={units}
-        className="w-16 text-center"
-      />
-      <span className="text-slate-600">×</span>
-      <Input name="reps" type="number" inputMode="numeric" defaultValue={defaultReps || ''} placeholder={t('common.reps')} className="w-14 text-center" />
-      <select
-        name="rpe"
-        defaultValue={existing?.rpe != null ? String(existing.rpe) : ''}
-        className="w-16 rounded-xl border border-white/10 bg-white/5 px-1.5 py-2.5 text-xs text-white outline-none"
-      >
-        {RPE_OPTIONS.map((r) => (
-          <option key={r} value={r}>
-            {r ? `RPE ${r}` : 'RPE'}
-          </option>
-        ))}
-      </select>
-      <Button type="submit" variant={done ? 'secondary' : 'primary'} className="ms-auto !px-3 !py-2">
-        {done ? '✓' : t('session.logBtn')}
-      </Button>
-      {done && existing?.id != null && (
-        <button
-          type="button"
-          onClick={() => onDelete(existing.id!)}
-          className="rounded-lg px-2 py-2 text-xs text-red-400/70"
-          title={t('session.deleteSet')}
-        >
-          ✕
-        </button>
+    <div className={`rounded-2xl border p-3 ${done ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/10 bg-white/5'}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-500">#{setNumber}</span>
+        <div className="flex items-center gap-1.5">
+          {isRepeat && <span className="text-[11px] text-emerald-400/80">{t('session.repeatLast')}</span>}
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className={`rounded-md px-2 py-1 text-[10px] font-bold ${expanded ? SET_TYPE_COLOR[setType] : 'text-slate-500'}`}
+          >
+            {setType !== 'working' ? SET_TYPE_LABEL[setType] : t('session.moreOptions')}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={cycleSetType}
+            className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold ${SET_TYPE_COLOR[setType]}`}
+            title={t('session.setTypeHint')}
+          >
+            {SET_TYPE_LABEL[setType]}
+          </button>
+          <select
+            value={rpe}
+            onChange={(e) => setRpe(e.target.value)}
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-xs text-white outline-none"
+          >
+            {RPE_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {r ? `RPE ${r}` : 'RPE'}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
-    </form>
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <Stepper value={weight} onChange={updateWeight} step={weightStep} suffix={units} />
+        <Stepper value={reps} onChange={updateReps} step={1} suffix={t('common.reps')} />
+      </div>
+
+      <div className="mt-2 flex gap-2">
+        <Button
+          onClick={handleLog}
+          variant={done ? 'secondary' : 'primary'}
+          className={`flex-1 ${done ? '' : '!text-base'}`}
+        >
+          {logLabel}
+        </Button>
+        {done && existing?.id != null && (
+          <button
+            type="button"
+            onClick={() => onDelete(existing.id!)}
+            className="rounded-xl px-3 text-sm text-red-400/70"
+            title={t('session.deleteSet')}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

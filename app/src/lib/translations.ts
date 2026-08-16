@@ -40,7 +40,7 @@ export const en = {
   'dashboard.title': 'Today',
   'dashboard.upNext': 'Up next',
   'dashboard.exercises': '{{n}} exercises',
-  'dashboard.viewStart': 'View & Start Workout',
+  'dashboard.viewStart': 'Start Workout ▸',
   'dashboard.resume': 'Resume Workout',
   'dashboard.noPlan': 'No workout plan yet. Add one in the Workout tab.',
   'dashboard.nutritionToday': 'Nutrition today',
@@ -102,7 +102,11 @@ export const en = {
   'session.newPR': '🎉 New PR on {{name}}: {{weight}}{{unit}} × {{reps}}',
   'session.deleteSet': 'Delete this set',
   'session.setTypeHint': 'Tap to cycle: Working / Warm-up / Failure / Drop set',
-  'session.logBtn': 'Log',
+  'session.logBtn': 'Log set',
+  'session.logValues': 'Log {{weight}}{{unit}} × {{reps}}',
+  'session.loggedValues': '{{weight}}{{unit}} × {{reps}}',
+  'session.repeatLast': 'Same as last time',
+  'session.moreOptions': 'Type & RPE',
   'session.minutes': '{{n}} min',
 
   // Progress
@@ -383,7 +387,7 @@ export const ar: typeof en = {
   'dashboard.title': 'النهاردة',
   'dashboard.upNext': 'التالي',
   'dashboard.exercises': '{{n}} تمارين',
-  'dashboard.viewStart': 'شوف وابدأ التمرين',
+  'dashboard.viewStart': 'ابدأ التمرين ◂',
   'dashboard.resume': 'كمّل التمرين',
   'dashboard.noPlan': 'مفيش خطة لسه. ضيف واحدة من تبويب التمرين.',
   'dashboard.nutritionToday': 'أكل النهاردة',
@@ -445,7 +449,11 @@ export const ar: typeof en = {
   'session.newPR': '🎉 رقم قياسي جديد في {{name}}: {{weight}}{{unit}} × {{reps}}',
   'session.deleteSet': 'حذف المجموعة دي',
   'session.setTypeHint': 'دوس للتبديل: عادي / إحماء / للفشل / دروب سِت',
-  'session.logBtn': 'سجّل',
+  'session.logBtn': 'سجّل المجموعة',
+  'session.logValues': 'سجّل {{weight}}{{unit}} × {{reps}}',
+  'session.loggedValues': '{{weight}}{{unit}} × {{reps}}',
+  'session.repeatLast': 'زي المرة اللي فاتت',
+  'session.moreOptions': 'النوع و RPE',
   'session.minutes': '{{n}} دقيقة',
 
   // Progress
