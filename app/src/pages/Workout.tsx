@@ -3,10 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
 import db from '../db';
 import { todayStr } from '../lib/date';
+import { useT } from '../lib/i18n';
 import { Card, PageHeader, Button, Input } from '../components/ui';
 
 export default function Workout() {
   const navigate = useNavigate();
+  const { t, lang } = useT();
   const planDays = useLiveQuery(() => db.planDays.orderBy('order').toArray(), []);
   const todaysOpenSessions = useLiveQuery(
     () => db.workoutSessions.where('date').equals(todayStr()).filter((s) => !s.completed).toArray(),
@@ -24,11 +26,11 @@ export default function Workout() {
   }
 
   async function removeDay(id: number) {
-    if (!confirm('Delete this workout day?')) return;
+    if (!confirm(t('workout.confirmDeleteDay'))) return;
     await db.planDays.delete(id);
   }
 
-  async function quickStart(dayId: number, dayName: string) {
+  async function quickStart(dayId: number, name: string, nameAr?: string) {
     const open = todaysOpenSessions?.find((s) => s.planDayId === dayId);
     if (open) {
       navigate(`/workout/session/${open.id}`);
@@ -38,7 +40,8 @@ export default function Workout() {
       date: todayStr(),
       startedAt: Date.now(),
       planDayId: dayId,
-      planDayName: dayName,
+      planDayName: name,
+      planDayNameAr: nameAr,
       completed: false,
     });
     navigate(`/workout/session/${sessionId}`);
@@ -48,16 +51,28 @@ export default function Workout() {
 
   return (
     <div className="pb-4">
-      <PageHeader title="Workout Plan" subtitle="Your split, exercises & machines" />
+      <PageHeader
+        title={t('workout.title')}
+        subtitle={t('workout.subtitle')}
+        action={
+          <button
+            onClick={() => navigate('/programs')}
+            className="shrink-0 whitespace-nowrap rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-emerald-400"
+          >
+            {t('programs.change')}
+          </button>
+        }
+      />
       <div className="flex flex-col gap-3 px-4">
         {planDays.map((day) => {
           const isOpen = todaysOpenSessions?.some((s) => s.planDayId === day.id);
+          const label = (lang === 'ar' && day.nameAr) || day.name;
           return (
             <Card key={day.id}>
-              <div className="flex items-center justify-between cursor-pointer" onClick={() => navigate(`/workout/day/${day.id}`)}>
+              <div className="flex cursor-pointer items-center justify-between" onClick={() => navigate(`/workout/day/${day.id}`)}>
                 <div>
-                  <h2 className="text-base font-semibold text-white">{day.name}</h2>
-                  <p className="mt-0.5 text-sm text-slate-400">{day.exercises.length} exercises</p>
+                  <h2 className="text-base font-semibold text-white">{label}</h2>
+                  <p className="mt-0.5 text-sm text-slate-400">{t('dashboard.exercises', { n: day.exercises.length })}</p>
                 </div>
                 <span className="text-slate-500">›</span>
               </div>
@@ -66,15 +81,15 @@ export default function Workout() {
                   onClick={() => day.id && removeDay(day.id)}
                   className="text-xs text-red-400/80 underline underline-offset-2"
                 >
-                  delete day
+                  {t('workout.deleteDay')}
                 </button>
                 <Button
                   variant={isOpen ? 'secondary' : 'primary'}
-                  className="!py-1.5 !px-3 !text-xs"
-                  onClick={() => day.id && quickStart(day.id, day.name)}
+                  className="!px-3 !py-1.5 !text-xs"
+                  onClick={() => day.id && quickStart(day.id, day.name, day.nameAr)}
                   disabled={day.exercises.length === 0}
                 >
-                  {isOpen ? 'Resume' : 'Start ▸'}
+                  {isOpen ? t('workout.resume') : t('workout.start')}
                 </Button>
               </div>
             </Card>
@@ -83,14 +98,14 @@ export default function Workout() {
 
         {showAddDay ? (
           <Card className="flex flex-col gap-2">
-            <Input placeholder="e.g. Upper Body" value={dayName} onChange={(e) => setDayName(e.target.value)} autoFocus />
+            <Input placeholder={t('workout.addDayName')} value={dayName} onChange={(e) => setDayName(e.target.value)} autoFocus />
             <div className="flex gap-2">
-              <Button className="flex-1" onClick={addDay}>Add Day</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => setShowAddDay(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={addDay}>{t('workout.addDayBtn')}</Button>
+              <Button variant="secondary" className="flex-1" onClick={() => setShowAddDay(false)}>{t('common.cancel')}</Button>
             </div>
           </Card>
         ) : (
-          <Button variant="secondary" onClick={() => setShowAddDay(true)}>+ Add Workout Day</Button>
+          <Button variant="secondary" onClick={() => setShowAddDay(true)}>{t('workout.addDay')}</Button>
         )}
       </div>
     </div>

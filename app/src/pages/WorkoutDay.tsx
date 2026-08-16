@@ -3,12 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate, useParams } from 'react-router-dom';
 import db, { type Exercise } from '../db';
 import { todayStr } from '../lib/date';
+import { useT, localized } from '../lib/i18n';
+import { MUSCLES, type MuscleKey } from '../lib/muscles';
 import { Card, PageHeader, Button, Input, Select, EmptyState } from '../components/ui';
 
 export default function WorkoutDay() {
   const { dayId } = useParams();
   const id = Number(dayId);
   const navigate = useNavigate();
+  const { t, lang } = useT();
 
   const day = useLiveQuery(() => db.planDays.get(id), [id]);
   const exercises = useLiveQuery(() => db.exercises.toArray(), []);
@@ -19,12 +22,13 @@ export default function WorkoutDay() {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showNewExercise, setShowNewExercise] = useState(false);
   const [pickId, setPickId] = useState<number | ''>('');
-  const [newEx, setNewEx] = useState({ name: '', muscleGroup: '', machine: '', sets: 3, repsLow: 8, repsHigh: 12 });
+  const [newEx, setNewEx] = useState({ name: '', muscle: 'chest' as MuscleKey, machine: '', sets: 3, repsLow: 8, repsHigh: 12 });
 
   if (!day || !exercises) return null;
 
   const exById = new Map(exercises.map((e) => [e.id!, e]));
   const notInDay = exercises.filter((e) => !day.exercises.some((de) => de.exerciseId === e.id));
+  const dayLabel = (lang === 'ar' && day.nameAr) || day.name;
 
   async function startWorkout() {
     if (openSession) {
@@ -36,6 +40,7 @@ export default function WorkoutDay() {
       startedAt: Date.now(),
       planDayId: day!.id!,
       planDayName: day!.name,
+      planDayNameAr: day!.nameAr,
       completed: false,
     });
     navigate(`/workout/session/${sessionId}`);
@@ -54,7 +59,8 @@ export default function WorkoutDay() {
     if (!newEx.name.trim() || !newEx.machine.trim()) return;
     const exData: Exercise = {
       name: newEx.name.trim(),
-      muscleGroup: newEx.muscleGroup.trim() || 'General',
+      muscleGroup: newEx.muscle,
+      muscle: newEx.muscle,
       machine: newEx.machine.trim(),
       targetSets: newEx.sets,
       targetRepsLow: newEx.repsLow,
@@ -63,7 +69,7 @@ export default function WorkoutDay() {
     const exId = await db.exercises.add(exData);
     const updated = [...day!.exercises, { exerciseId: exId as number, sets: exData.targetSets, repsLow: exData.targetRepsLow, repsHigh: exData.targetRepsHigh }];
     await db.planDays.update(day!.id!, { exercises: updated });
-    setNewEx({ name: '', muscleGroup: '', machine: '', sets: 3, repsLow: 8, repsHigh: 12 });
+    setNewEx({ name: '', muscle: 'chest', machine: '', sets: 3, repsLow: 8, repsHigh: 12 });
     setShowNewExercise(false);
   }
 
@@ -74,28 +80,30 @@ export default function WorkoutDay() {
 
   return (
     <div className="pb-4">
-      <PageHeader title={day.name} subtitle="Exercises & machines for this day" />
+      <PageHeader title={dayLabel} subtitle={t('workout.dayExercises')} />
       <div className="flex flex-col gap-3 px-4">
-        {day.exercises.length === 0 && <EmptyState text="No exercises yet — add some below." />}
+        {day.exercises.length === 0 && <EmptyState text={t('workout.noExercises')} />}
 
         {day.exercises.map((de) => {
           const ex = exById.get(de.exerciseId);
           if (!ex) return null;
+          const muscleDef = MUSCLES.find((m) => m.key === ex.muscle);
           return (
             <Card key={de.exerciseId}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-white">{ex.name}</h3>
-                  <p className="text-sm text-slate-400">{ex.machine}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="truncate font-semibold text-white">{localized(ex, 'name', lang)}</h3>
+                  <p className="truncate text-sm text-slate-400">{localized(ex, 'machine', lang)}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {ex.muscleGroup} · {de.sets} sets × {de.repsLow}-{de.repsHigh} reps
+                    {muscleDef ? (lang === 'ar' ? muscleDef.ar : muscleDef.en) : ex.muscleGroup} · {de.sets} × {de.repsLow}-{de.repsHigh}{' '}
+                    {t('common.reps')}
                   </p>
                 </div>
                 <button
                   onClick={() => removeExercise(de.exerciseId)}
-                  className="text-xs text-red-400/80 underline underline-offset-2"
+                  className="shrink-0 text-xs text-red-400/80 underline underline-offset-2"
                 >
-                  remove
+                  {t('common.remove')}
                 </button>
               </div>
             </Card>
@@ -103,46 +111,52 @@ export default function WorkoutDay() {
         })}
 
         <Button onClick={startWorkout} disabled={day.exercises.length === 0}>
-          {openSession ? 'Resume Workout ▸' : 'Start Workout ▸'}
+          {openSession ? t('workout.resumeWorkout') : t('workout.startWorkout')}
         </Button>
 
         <div className="mt-2 flex flex-col gap-2">
           {showAddExercise ? (
             <Card className="flex flex-col gap-2">
               <Select value={pickId} onChange={(e) => setPickId(e.target.value ? Number(e.target.value) : '')}>
-                <option value="">Choose an exercise…</option>
+                <option value="">{t('workout.chooseExercise')}</option>
                 {notInDay.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.name} — {e.machine}
+                    {localized(e, 'name', lang)} — {localized(e, 'machine', lang)}
                   </option>
                 ))}
               </Select>
               <div className="flex gap-2">
-                <Button className="flex-1" onClick={addExisting}>Add</Button>
-                <Button variant="secondary" className="flex-1" onClick={() => setShowAddExercise(false)}>Cancel</Button>
+                <Button className="flex-1" onClick={addExisting}>{t('common.add')}</Button>
+                <Button variant="secondary" className="flex-1" onClick={() => setShowAddExercise(false)}>{t('common.cancel')}</Button>
               </div>
             </Card>
           ) : (
-            <Button variant="secondary" onClick={() => setShowAddExercise(true)}>+ Add Existing Exercise</Button>
+            <Button variant="secondary" onClick={() => setShowAddExercise(true)}>{t('workout.addExisting')}</Button>
           )}
 
           {showNewExercise ? (
             <Card className="flex flex-col gap-2">
-              <Input placeholder="Exercise name" value={newEx.name} onChange={(e) => setNewEx({ ...newEx, name: e.target.value })} />
-              <Input placeholder="Muscle group (e.g. Chest)" value={newEx.muscleGroup} onChange={(e) => setNewEx({ ...newEx, muscleGroup: e.target.value })} />
-              <Input placeholder="Machine / equipment" value={newEx.machine} onChange={(e) => setNewEx({ ...newEx, machine: e.target.value })} />
+              <Input placeholder={t('workout.exerciseName')} value={newEx.name} onChange={(e) => setNewEx({ ...newEx, name: e.target.value })} />
+              <Select value={newEx.muscle} onChange={(e) => setNewEx({ ...newEx, muscle: e.target.value as MuscleKey })}>
+                {MUSCLES.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {lang === 'ar' ? m.ar : m.en}
+                  </option>
+                ))}
+              </Select>
+              <Input placeholder={t('workout.machine')} value={newEx.machine} onChange={(e) => setNewEx({ ...newEx, machine: e.target.value })} />
               <div className="flex gap-2">
-                <Input type="number" placeholder="Sets" value={newEx.sets} onChange={(e) => setNewEx({ ...newEx, sets: Number(e.target.value) })} />
-                <Input type="number" placeholder="Reps low" value={newEx.repsLow} onChange={(e) => setNewEx({ ...newEx, repsLow: Number(e.target.value) })} />
-                <Input type="number" placeholder="Reps high" value={newEx.repsHigh} onChange={(e) => setNewEx({ ...newEx, repsHigh: Number(e.target.value) })} />
+                <Input type="number" placeholder={t('workout.setsLabel')} value={newEx.sets} onChange={(e) => setNewEx({ ...newEx, sets: Number(e.target.value) })} />
+                <Input type="number" placeholder={t('workout.repsLow')} value={newEx.repsLow} onChange={(e) => setNewEx({ ...newEx, repsLow: Number(e.target.value) })} />
+                <Input type="number" placeholder={t('workout.repsHigh')} value={newEx.repsHigh} onChange={(e) => setNewEx({ ...newEx, repsHigh: Number(e.target.value) })} />
               </div>
               <div className="flex gap-2">
-                <Button className="flex-1" onClick={addNewExercise}>Create & Add</Button>
-                <Button variant="secondary" className="flex-1" onClick={() => setShowNewExercise(false)}>Cancel</Button>
+                <Button className="flex-1" onClick={addNewExercise}>{t('workout.createAndAdd')}</Button>
+                <Button variant="secondary" className="flex-1" onClick={() => setShowNewExercise(false)}>{t('common.cancel')}</Button>
               </div>
             </Card>
           ) : (
-            <Button variant="secondary" onClick={() => setShowNewExercise(true)}>+ Create New Exercise</Button>
+            <Button variant="secondary" onClick={() => setShowNewExercise(true)}>{t('workout.createNew')}</Button>
           )}
         </div>
       </div>

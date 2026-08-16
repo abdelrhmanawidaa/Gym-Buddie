@@ -1,14 +1,19 @@
 import { NavLink } from 'react-router-dom';
+import { useT } from '../lib/i18n';
+import type { TranslationKey } from '../lib/translations';
 
-const items = [
-  { to: '/', label: 'Today', icon: HomeIcon },
-  { to: '/workout', label: 'Workout', icon: DumbbellIcon },
-  { to: '/progress', label: 'Progress', icon: ChartIcon },
-  { to: '/nutrition', label: 'Food', icon: AppleIcon },
-  { to: '/body', label: 'Body', icon: RulerIcon },
+const items: { to: string; label: TranslationKey; icon: (p: React.SVGProps<SVGSVGElement>) => React.ReactElement }[] = [
+  { to: '/', label: 'nav.today', icon: HomeIcon },
+  { to: '/workout', label: 'nav.workout', icon: DumbbellIcon },
+  { to: '/muscles', label: 'nav.muscles', icon: MuscleIcon },
+  { to: '/progress', label: 'nav.progress', icon: ChartIcon },
+  { to: '/nutrition', label: 'nav.food', icon: AppleIcon },
+  { to: '/body', label: 'nav.body', icon: RulerIcon },
 ];
 
 export default function BottomNav() {
+  const { t } = useT();
+
   return (
     <nav className="sticky bottom-0 z-20 border-t border-white/10 bg-[#0b0f14]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
       <div className="flex justify-around">
@@ -18,13 +23,23 @@ export default function BottomNav() {
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors ${
+              `flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
                 isActive ? 'text-emerald-400' : 'text-slate-500'
               }`
             }
           >
-            <Icon className="h-5 w-5" />
-            {label}
+            {({ isActive }) => (
+              <>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
+                    isActive ? 'scale-105 bg-emerald-500/15' : ''
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="max-w-full truncate px-0.5">{t(label)}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>
@@ -47,6 +62,16 @@ function DumbbellIcon(props: React.SVGProps<SVGSVGElement>) {
       <path d="M6.5 6.5 3 10l4 4 3.5-3.5" />
       <path d="M17.5 17.5 21 14l-4-4-3.5 3.5" />
       <path d="m9 15 6-6" />
+    </svg>
+  );
+}
+
+function MuscleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 9c2-2 5-2.5 7-1.5 2 1 2.5 3 4.5 3.5 2 .5 3.5-.5 4.5-1.5" />
+      <path d="M4 9c-1 3 0 6 2.5 7.5C9 18 12 17.5 13.5 15" />
+      <path d="M20 9.5c1 3.5-.5 7-3.5 8.5" />
     </svg>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Input } from './ui';
+import { useT } from '../lib/i18n';
 import { displayWeight, toKg, type Unit } from '../lib/units';
 import WarmupCalc from './WarmupCalc';
 import PlateCalc from './PlateCalc';
@@ -15,6 +16,7 @@ export default function ExerciseTools({
   barWeightKg: number;
   availablePlatesKg: number[];
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [weightStr, setWeightStr] = useState(defaultWeightKg > 0 ? String(displayWeight(defaultWeightKg, units)) : '');
 
@@ -26,7 +28,7 @@ export default function ExerciseTools({
         onClick={() => setOpen((o) => !o)}
         className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
       >
-        🧮 Warm-up &amp; plate calculator
+        {t('session.calculator')}
       </button>
       {open && (
         <div className="mt-2 flex flex-col gap-2">
