@@ -271,6 +271,68 @@ export const en = {
   'ai.retake': 'Try another photo',
   'ai.disclaimer': 'Photo estimates are approximate — adjust the numbers if you know better.',
   'ai.items': 'What I can see',
+
+  // Levels
+  'level.untrained': 'Untrained',
+  'level.novice': 'Novice',
+  'level.beginner': 'Beginner',
+  'level.intermediate': 'Intermediate',
+  'level.advanced': 'Advanced',
+  'level.elite': 'Elite',
+
+  // Physique avatar
+  'physique.title': 'Your physique',
+  'physique.subtitle': 'Muscles fill in and grow as your lifts go up',
+  'physique.front': 'Front',
+  'physique.back': 'Back',
+  'physique.overall': 'Overall level',
+  'physique.tapMuscle': 'Tap a muscle to open it',
+  'physique.needsWeight': 'Log your bodyweight to unlock strength levels — until then muscles level up on sets logged.',
+  'physique.strongest': 'Strongest',
+  'physique.weakest': 'Needs work',
+  'physique.nextLevel': '{{n}}% to next level',
+  'physique.legend': 'Colour = strength level',
+
+  // Anatomy
+  'anatomy.where': 'Where it is',
+  'anatomy.does': 'What it does',
+  'anatomy.parts': 'Parts of this muscle',
+  'anatomy.primaryExercises': 'Trains it directly',
+  'anatomy.secondaryExercises': 'Assists in',
+  'anatomy.alsoWorks': 'Also works',
+  'anatomy.mainMuscle': 'Main muscle',
+  'anatomy.assisting': 'Assisting muscles',
+  'anatomy.strengthStandard': 'Your best is {{ratio}}× bodyweight',
+
+  // Programs
+  'programs.title': 'Training programs',
+  'programs.subtitle': 'Pick the split that matches your week',
+  'programs.change': 'change program',
+  'programs.daysQuestion': 'How many days a week can you train?',
+  'programs.days': '{{n}} days',
+  'programs.recommended': 'Recommended for you',
+  'programs.frequency': 'Each muscle {{n}}× per week',
+  'programs.frequencyOnce': 'Each muscle once per week',
+  'programs.apply': 'Use this program',
+  'programs.applied': 'Program applied ✓',
+  'programs.confirmApply': 'This replaces your current workout days. Your logged history stays untouched. Continue?',
+  'programs.current': 'Current',
+  'programs.bestFor': 'Best for',
+  'programs.whyFrequency': 'Training each muscle twice a week beats once — that is the single biggest factor when picking a split.',
+
+  // Machine scanner
+  'scanner.title': '📸 Scan a machine',
+  'scanner.subtitle': "Photograph any machine and find out what it trains and how to use it",
+  'scanner.takePhoto': 'Take / choose a machine photo',
+  'scanner.analyzing': 'Identifying the machine…',
+  'scanner.error': "Couldn't identify that machine. Check your key and connection, then try again.",
+  'scanner.howTo': 'How to use it',
+  'scanner.formTips': 'Form cues',
+  'scanner.mistakes': 'Common mistakes',
+  'scanner.saveExercise': 'Add to my exercises',
+  'scanner.saved': 'Added to your exercises ✓',
+  'scanner.another': 'Scan another machine',
+  'scanner.noKey': 'Add your Anthropic API key in Settings to turn this on.',
 };
 
 export const ar: typeof en = {
@@ -546,6 +608,68 @@ export const ar: typeof en = {
   'ai.retake': 'جرب صورة تانية',
   'ai.disclaimer': 'التقدير من الصورة تقريبي — عدّل الأرقام لو انت عارف أدق.',
   'ai.items': 'اللي شايفه',
+
+  // Levels
+  'level.untrained': 'لسه',
+  'level.novice': 'مبتدئ',
+  'level.beginner': 'ناشئ',
+  'level.intermediate': 'متوسط',
+  'level.advanced': 'متقدم',
+  'level.elite': 'محترف',
+
+  // Physique avatar
+  'physique.title': 'جسمك',
+  'physique.subtitle': 'العضلات بتتلون وبتكبر كل ما أوزانك بتزيد',
+  'physique.front': 'قدام',
+  'physique.back': 'ورا',
+  'physique.overall': 'المستوى العام',
+  'physique.tapMuscle': 'دوس على أي عضلة تفتحها',
+  'physique.needsWeight': 'سجّل وزنك علشان تفتح مستويات القوة — لحد كده العضلات بتتطور بعدد المجموعات.',
+  'physique.strongest': 'أقوى عضلة',
+  'physique.weakest': 'محتاجة شغل',
+  'physique.nextLevel': '{{n}}% للمستوى اللي بعده',
+  'physique.legend': 'اللون = مستوى القوة',
+
+  // Anatomy
+  'anatomy.where': 'مكانها',
+  'anatomy.does': 'بتعمل إيه',
+  'anatomy.parts': 'أجزاء العضلة',
+  'anatomy.primaryExercises': 'بتشتغل عليها مباشرة',
+  'anatomy.secondaryExercises': 'بتساعد في',
+  'anatomy.alsoWorks': 'كمان بتشغّل',
+  'anatomy.mainMuscle': 'العضلة الأساسية',
+  'anatomy.assisting': 'العضلات المساعدة',
+  'anatomy.strengthStandard': 'أحسن رقم ليك {{ratio}}× وزن جسمك',
+
+  // Programs
+  'programs.title': 'أنظمة التمرين',
+  'programs.subtitle': 'اختار التقسيمة اللي تناسب أسبوعك',
+  'programs.change': 'غيّر النظام',
+  'programs.daysQuestion': 'بتقدر تتمرن كام يوم في الأسبوع؟',
+  'programs.days': '{{n}} أيام',
+  'programs.recommended': 'المرشح ليك',
+  'programs.frequency': 'كل عضلة {{n}} مرات في الأسبوع',
+  'programs.frequencyOnce': 'كل عضلة مرة واحدة في الأسبوع',
+  'programs.apply': 'استخدم النظام ده',
+  'programs.applied': 'تم تطبيق النظام ✓',
+  'programs.confirmApply': 'ده هيغيّر أيام التمرين الحالية. سجل تمارينك القديم مش هيتمس. تكمل؟',
+  'programs.current': 'الحالي',
+  'programs.bestFor': 'مناسب لـ',
+  'programs.whyFrequency': 'إن كل عضلة تتدرب مرتين في الأسبوع أحسن من مرة — ده أهم عامل في اختيار التقسيمة.',
+
+  // Machine scanner
+  'scanner.title': '📸 صوّر الجهاز',
+  'scanner.subtitle': 'صوّر أي جهاز واعرف بيشتغل على إيه وإزاي تلعب عليه',
+  'scanner.takePhoto': 'صوّر أو اختار صورة جهاز',
+  'scanner.analyzing': 'بحدد الجهاز…',
+  'scanner.error': 'مقدرتش أحدد الجهاز ده. اتأكد من المفتاح والإنترنت وجرب تاني.',
+  'scanner.howTo': 'إزاي تلعب عليه',
+  'scanner.formTips': 'نصايح الأداء',
+  'scanner.mistakes': 'أخطاء شائعة',
+  'scanner.saveExercise': 'ضيفه لتماريني',
+  'scanner.saved': 'اتضاف لتمارينك ✓',
+  'scanner.another': 'صوّر جهاز تاني',
+  'scanner.noKey': 'حط مفتاح Anthropic API في الإعدادات علشان تشغّل ده.',
 };
 
 export type TranslationKey = keyof typeof en;

@@ -23,13 +23,23 @@ export default function BottomNav() {
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors ${
+              `flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
                 isActive ? 'text-emerald-400' : 'text-slate-500'
               }`
             }
           >
-            <Icon className="h-5 w-5" />
-            <span className="max-w-full truncate px-0.5">{t(label)}</span>
+            {({ isActive }) => (
+              <>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
+                    isActive ? 'scale-105 bg-emerald-500/15' : ''
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="max-w-full truncate px-0.5">{t(label)}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

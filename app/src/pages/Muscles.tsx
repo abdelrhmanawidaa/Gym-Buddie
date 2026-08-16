@@ -50,7 +50,18 @@ export default function Muscles() {
 
   return (
     <div className="pb-4">
-      <PageHeader title={t('muscles.title')} subtitle={t('muscles.subtitle')} />
+      <PageHeader
+        title={t('muscles.title')}
+        subtitle={t('muscles.subtitle')}
+        action={
+          <button
+            onClick={() => navigate('/scanner')}
+            className="shrink-0 whitespace-nowrap rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-fuchsia-400"
+          >
+            {t('scanner.title')}
+          </button>
+        }
+      />
 
       <div className="flex flex-col gap-3 px-4">
         {recommended.length > 0 && (

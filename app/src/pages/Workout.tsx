@@ -51,7 +51,18 @@ export default function Workout() {
 
   return (
     <div className="pb-4">
-      <PageHeader title={t('workout.title')} subtitle={t('workout.subtitle')} />
+      <PageHeader
+        title={t('workout.title')}
+        subtitle={t('workout.subtitle')}
+        action={
+          <button
+            onClick={() => navigate('/programs')}
+            className="shrink-0 whitespace-nowrap rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-emerald-400"
+          >
+            {t('programs.change')}
+          </button>
+        }
+      />
       <div className="flex flex-col gap-3 px-4">
         {planDays.map((day) => {
           const isOpen = todaysOpenSessions?.some((s) => s.planDayId === day.id);

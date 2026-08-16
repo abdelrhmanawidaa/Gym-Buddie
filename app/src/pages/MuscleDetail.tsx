@@ -9,6 +9,9 @@ import { estimate1RM } from '../lib/oneRepMax';
 import { todayStr } from '../lib/date';
 import { MUSCLE_BY_KEY, type MuscleKey } from '../lib/muscles';
 import { useMuscleStats } from '../lib/useMuscleStats';
+import { MUSCLE_ANATOMY, EXERCISE_SECONDARY } from '../lib/anatomy';
+import BodyMap from '../components/BodyMap';
+import { pickBodyView } from '../lib/bodyMapTypes';
 import { Card, PageHeader, Button, EmptyState } from '../components/ui';
 
 export default function MuscleDetail() {
@@ -44,6 +47,13 @@ export default function MuscleDetail() {
     }
     return map;
   }, [setLogs]);
+
+  const secondaryMuscles = useMemo(() => {
+    const set = new Set<MuscleKey>();
+    for (const ex of exercises ?? []) for (const m of EXERCISE_SECONDARY[ex.name] ?? []) set.add(m);
+    set.delete(key);
+    return [...set];
+  }, [exercises, key]);
 
   if (!def || !exercises || !stats) return null;
 
@@ -89,6 +99,8 @@ export default function MuscleDetail() {
   }
 
   const name = lang === 'ar' ? def.ar : def.en;
+  const anatomy = MUSCLE_ANATOMY[key];
+  const view = pickBodyView([key]);
 
   return (
     <div className="pb-4">
@@ -103,6 +115,60 @@ export default function MuscleDetail() {
       />
 
       <div className="flex flex-col gap-3 px-4">
+        {anatomy && (
+          <Card className="!p-0 overflow-hidden">
+            <div className="flex justify-center pt-3">
+              <BodyMap
+                view={view}
+                highlight={[key]}
+                highlightSecondary={secondaryMuscles}
+                className="h-[220px] w-auto"
+              />
+            </div>
+            <div className="flex flex-col gap-3 p-4 pt-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('anatomy.where')}</p>
+                <p className="mt-0.5 text-sm text-slate-300">{lang === 'ar' ? anatomy.locationAr : anatomy.locationEn}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('anatomy.does')}</p>
+                <p className="mt-0.5 text-sm text-slate-300">{lang === 'ar' ? anatomy.functionAr : anatomy.functionEn}</p>
+              </div>
+              {anatomy.parts.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-400">{t('anatomy.parts')}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {anatomy.parts.map((p) => (
+                      <span key={p.en} className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-slate-300">
+                        {lang === 'ar' ? p.ar : p.en}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {secondaryMuscles.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-amber-400">{t('anatomy.assisting')}</p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {secondaryMuscles.map((m) => {
+                      const mdef = MUSCLE_BY_KEY.get(m)!;
+                      return (
+                        <button
+                          key={m}
+                          onClick={() => navigate(`/muscles/${m}`)}
+                          className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300"
+                        >
+                          {lang === 'ar' ? mdef.ar : mdef.en}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
         <Card className="flex gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{t('muscles.pr')}</p>
@@ -175,6 +241,7 @@ function ExerciseRow({
 }) {
   const { t, lang } = useT();
   const settings = useSettings();
+  const secondary = EXERCISE_SECONDARY[ex.name] ?? [];
 
   return (
     <Card className={isPreferred ? '!border-emerald-500/40 !bg-emerald-500/[0.06]' : ''}>
@@ -187,6 +254,11 @@ function ExerciseRow({
             {best ? ` · ${displayWeight(best.bestWeight, settings.units)}${settings.units} × ${best.bestReps}` : ''}
           </p>
           {ex.notes && <p className="mt-1 text-xs italic text-slate-400">📝 {ex.notes}</p>}
+          {secondary.length > 0 && (
+            <p className="mt-1 text-xs text-slate-500">
+              {t('anatomy.alsoWorks')}: {secondary.map((m) => (lang === 'ar' ? MUSCLE_BY_KEY.get(m)!.ar : MUSCLE_BY_KEY.get(m)!.en)).join(', ')}
+            </p>
+          )}
         </div>
         {isPreferred ? (
           <span className="shrink-0 rounded-full bg-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">

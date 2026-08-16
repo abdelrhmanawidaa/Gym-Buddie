@@ -6,10 +6,12 @@ import I18nProvider from './components/I18nProvider';
 import { useT } from './lib/i18n';
 import Dashboard from './pages/Dashboard';
 import Workout from './pages/Workout';
+import Programs from './pages/Programs';
 import WorkoutDay from './pages/WorkoutDay';
 import WorkoutSession from './pages/WorkoutSession';
 import Muscles from './pages/Muscles';
 import MuscleDetail from './pages/MuscleDetail';
+import Scanner from './pages/Scanner';
 import Progress from './pages/Progress';
 import Nutrition from './pages/Nutrition';
 import BodyStats from './pages/BodyStats';
@@ -47,10 +49,12 @@ function Shell() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/workout" element={<Workout />} />
+            <Route path="/programs" element={<Programs />} />
             <Route path="/workout/day/:dayId" element={<WorkoutDay />} />
             <Route path="/workout/session/:sessionId" element={<WorkoutSession />} />
             <Route path="/muscles" element={<Muscles />} />
             <Route path="/muscles/:muscleKey" element={<MuscleDetail />} />
+            <Route path="/scanner" element={<Scanner />} />
             <Route path="/progress" element={<Progress />} />
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/body" element={<BodyStats />} />

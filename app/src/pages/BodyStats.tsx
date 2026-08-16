@@ -9,6 +9,7 @@ import { displayWeight, toKg } from '../lib/units';
 import { bmi, bmiCategory, navyBodyFat } from '../lib/bodyComposition';
 import { resizeImageFile } from '../lib/image';
 import { Card, PageHeader, Button, Input, EmptyState } from '../components/ui';
+import PhysiqueAvatar from '../components/PhysiqueAvatar';
 
 const ANGLES: BodyPhoto['angle'][] = ['front', 'side', 'back'];
 const ANGLE_KEY: Record<BodyPhoto['angle'], 'body.front' | 'body.side' | 'body.back'> = {
@@ -106,6 +107,8 @@ export default function BodyStats() {
     <div className="pb-4">
       <PageHeader title={t('body.title')} subtitle={t('body.subtitle')} />
       <div className="flex flex-col gap-3 px-4">
+        <PhysiqueAvatar />
+
         {chartData.length > 1 && (
           <Card>
             <p className="mb-2 text-sm font-medium text-slate-300">{t('body.weightChart', { unit: settings.units })}</p>

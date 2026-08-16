@@ -149,6 +149,8 @@ export interface Settings {
   goalType?: NutritionGoalType;
   /** Optional Anthropic API key for the food-photo analyser. Stored on-device only. */
   aiApiKey?: string;
+  /** id of the training-program template currently applied to the plan, if any. */
+  activeProgramId?: string;
 }
 
 const db = new Dexie('gym-buddie') as Dexie & {
